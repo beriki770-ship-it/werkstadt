@@ -725,6 +725,10 @@ function startRecord() {
   const plan = filmPlanMs(replay.events);
   clock.speed = Math.min(REC.maxSpeed,
                          Math.max(1, plan / (REC.targetPlaySecs * 1000)));
+  /* The crowd runs on wall time and everything else in a recording runs on the
+     session clock. Told the speed once, life.js's own accident sequence lands
+     inside the film instead of outstaying it — see city.js setLifeRate(). */
+  City.setLifeRate(clock.speed);
   const started = replay.session.started ? new Date(replay.session.started) : null;
   el('record-title').textContent = oneLine(replay.session.title) || 'session';
   /* The town's own name first: in single-session mode `projectName` is the

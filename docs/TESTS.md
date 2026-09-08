@@ -522,3 +522,84 @@ Note for whoever repeats this: `claude plugin uninstall` needs `--scope local`
 when the install used it, and removing the marketplace first makes the uninstall
 report "not found in installed plugins", which is confusing but harmless. Check
 `claude plugin list` rather than trusting either message.
+
+## 13. The ported accident fixes and the demo fixture (2026-09-08, later)
+
+Everything in this section was run against this tree on 2026-09-08, with the
+CDP harness of section 1 at 1440x900, `server.py --port 4954`, and one headless
+Chrome of its own on port 9461. It covers the four files ported out of the
+private install (see HANDOFF, the section at the top) and the fixture that
+closed gap 8.
+
+### 13.1 The accident finishes, on three different hosts
+
+The gate is that the incident leaves `approach`, reaches `ambulance`, has the
+ambulance actually arrive, and then tears itself down — because the accident
+slot is exclusive and one that wedges declines every later error in the session.
+
+| host | how it was driven | stages, in that host's own clock | result |
+|---|---|---|---|
+| `life.html?robots=0` | `__accident()`, then `__accidentState()` polled at 50 ms | approach 0 → hit 9.76 s → ambulance 11.88 s → arrived → clear 38.0 s → gone 40.01 s | PASS |
+| `index.html?project=<a real town>&replay=1&record=1` | `__recordTick()` driven 900 times, `__lifeAccident()` read every tick | staged f1 → hit f50 → ambulance f75 → arrived f112 → clear f363 → gone f388 | PASS |
+| `index.html` on `data/demo.json` | played in real time, `__lifeAccident()` polled at 50 ms | approach 5.40 s → hit 7.36 s → ambulance 9.37 s → arrived 12.00 s → clear 31.96 s → gone 34.01 s | PASS |
+
+The record row is the one the fixes were written for: before them the same run
+sat in `approach` for 581 consecutive frames and declined every later error. The
+`life.html` timings are longer than the private install's (2.22 s to hit against
+9.76 s) for a boring reason — a headless software renderer runs fewer frames per
+wall second, and `life.js` clamps `dt`, so its life clock lags the wall clock.
+Read the ORDER of the stages, not the seconds.
+
+### 13.2 The stress gates did not move
+
+`life.html?stress=1`, 600 sampled frames, run three times with identical results,
+and once more against the pre-port `life.js` to prove the port is what did not
+change it.
+
+| check | before the port | after the port | result |
+|---|---|---|---|
+| vehicles placed | 54 | 54 | PASS |
+| `__overlaps()` frames of 600 carrying a pair | 77 (max 2 pairs) | 77 (max 2 pairs) | **known FAIL, not regressed** — gap 7 / section 12.1 |
+| `__headingErr()` worst | 0, 0 wraps | 0, 0 wraps | PASS |
+| `__pedOnRoad()` | `[]` | `[]` | PASS |
+| `__penetrations()` | `now 0, peak 0, rate 0` | `now 0, peak 0, rate 0` | PASS |
+| `__carsInZone()` | `[]` | `[]` | PASS |
+
+The 77 is inside the same failure section 12.1 measured at 45-75 and is the same
+mechanism; it is quoted here from this harness so the two numbers are comparable
+with each other rather than across machines. Identical before and after the port,
+which is the claim this row is making.
+
+### 13.3 `globe.html?signs=<name>`
+
+| check | expected | measured | result |
+|---|---|---|---|
+| `?signs=<a town name>` | one plaque built | `__signs()` → 1 sign (0 visible, 1 culled — that town was on the far side of the sphere at the pose) | PASS |
+| no flag | unchanged | 31 signs built, 3 visible | PASS |
+| console errors, either way | 0 | 0 | PASS |
+
+### 13.4 The demo fixture
+
+| check | expected | measured | result |
+|---|---|---|---|
+| `index.html` with no query, 4xx responses | 0 | 0 | PASS |
+| ... console errors | 0 | 0 | PASS |
+| ... fault card | absent | absent (it read "No session to replay yet" before the fixture) | PASS |
+| buildings | > 0 | 10 | PASS |
+| a crew on the street | > 0 | 3 workers, 1 drone, 2 crew actors, 1 car | PASS |
+| the accident | reaches `ambulance` | reaches `clear` and tears down — see 13.1 | PASS |
+| fixture size | ≤ 300 KB | 5,379 bytes | PASS |
+| fixture privacy | no username, `Desktop`, `Users`, `AppData`, or the throwaway folder's name | 0 occurrences of each | PASS |
+| screenshot | — | taken at `arrived`: two plates, ten lit buildings, the ambulance beacon and the hazard cones | PASS |
+
+### 13.5 Four pages, cold
+
+`index.html`, `globe.html`, `world.html`, `life.html`, each loaded fresh and left
+for 25 seconds.
+
+| page | console errors | 4xx | result |
+|---|---|---|---|
+| `index.html` | 0 | 0 | PASS |
+| `globe.html` | 0 | 0 | PASS |
+| `world.html` | 0 | 0 | PASS |
+| `life.html` | 0 | 0 | PASS |

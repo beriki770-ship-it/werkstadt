@@ -2930,6 +2930,7 @@ let lifeSun = null, lifeFill = null;
    the camera still draws the crowd and nothing else in the city is touched. */
 const LIFE_LAYER = 1;
 let lifeGraphAt = 0;             // `now` of the last graph cut
+let lifeRate = 1;                // how fast the crowd's clock runs; see setLifeRate()
 let lifeActive = [];             // the streets the graph currently holds
 let lifeCounted = { crew: 0, humans: 0, cars: 0 };
 const lifeReserve = { crew: [], people: [], cars: [] };
@@ -3419,6 +3420,13 @@ function setLifePopulation() {
   const keep = [];
   for (const a of life.actors) {
     if (a.kind !== 'person') { keep.push(a); continue; }
+    /* THE ACCIDENT'S VICTIM IS NOT PART OF THE FIT. `a.crash` means life.js has
+       this body lying in the road with an ambulance on its way to it; handing it
+       to the reserve pops it out again on some other avenue seconds later, and
+       seatOn() teleports it there — measured mid-incident on the promo town, the
+       victim 422 m from the wreck the ambulance was still attending. It is kept,
+       drawn and left where it is until the accident clears itself. */
+    if (a.crash) { keep.push(a); continue; }
     if (a.street && lifeActive.indexOf(a.street) >= 0) {
       const k = have.get(a.street) || { crew: [], people: [] };
       (a.isCrew ? k.crew : k.people).push(a);
@@ -3606,8 +3614,20 @@ function updateLife(dt) {
   lifeFill.color.copy(sunColor);
   lifeFill.groundColor.copy(ambient);
   life.setNight(nightAmt);
-  life.update(dt, lifeCam);
+  /* `lifeRate` is 1 everywhere except a recording. In ?record=1 a frame is worth
+     a fixed 1/30 s of FILM but the transport advances the SESSION clock by
+     clock.speed times that, so the crowd — the one layer paced off wall time —
+     ran the session's whole accident sequence at 1/240th of the speed the film
+     around it was playing at, and a staged collision needed 900 captured frames
+     to finish. Handing it the replay's own rate puts the two clocks back on the
+     same footing; life.update() clamps the product to 0.08 s itself, so the
+     ceiling is 2.4x a record frame and nobody can teleport. */
+  life.update(dt * lifeRate, lifeCam);
 }
+
+/* One caller: replay.js's startRecord(). Not a URL flag of this file's own — the
+   rate a recording runs at is the transport's number, not the city's. */
+export function setLifeRate(k) { lifeRate = Math.max(1, k || 1); }
 
 /* THE TWO HARNESS HOOKS, and they are here rather than in replay.js with the
    rest of the `window.__*` family for one reason: replay.js is owned by another
@@ -3652,6 +3672,13 @@ window.__lifeStand = (i, back, bearing) => {
      distance, which on a 300-unit town is still eleven units up. `F` already
      cuts all of that, and this is exactly the pose a viewer gets by pressing it
      and flying over: free.pos and the two angles are the entire camera. */
+  const eye = standAt(ax, az, back, bearing);
+  return { x: +ax.toFixed(2), z: +az.toFixed(2), on: cn, eye, name: s.name };
+};
+
+/* The pose itself, in CITY units, lifted out of __lifeStand so the accident
+   hook below can use the identical lens. Nothing about it changed. */
+function standAt(ax, az, back, bearing) {
   const b = bearing === undefined ? 2.3 : bearing;
   const d = back || 4.0;
   const eyeY = Math.max(FREE_EYE, d * 0.42);
@@ -3661,7 +3688,34 @@ window.__lifeStand = (i, back, bearing) => {
   const len = Math.hypot(fx, fy, fz) || 1;
   free.yaw = Math.atan2(-fx / len, -fz / len);
   free.pitch = Math.asin(Math.max(-1, Math.min(1, fy / len)));
-  return { x: +ax.toFixed(2), z: +az.toFixed(2), on: cn, eye: +eyeY.toFixed(2), name: s.name };
+  return +eyeY.toFixed(2);
+}
+
+/* THE ACCIDENT, FOR A LENS AND FOR A GATE. `__life().stats.accident` says which
+   stage the incident is in; this says WHERE it is, in CITY units, and — passed
+   `true` — puts the free-fly camera on it, because a capture harness has no
+   pointer and the orbit will not go there by itself. That is the same reason
+   __lifeStand exists, and this is the shot __lifeStand cannot frame: the victim
+   is not necessarily the crew member that hook aims at.
+   Callers: docs/RUNBOOK.md's accident capture, and the promo film's
+   capture/probe_product.py --accident. Null until a host reports a real error. */
+window.__lifeAccident = (stand, back, bearing) => {
+  const A = life && life.accident;
+  if (!A) return null;
+  const ax = A.at.x * LIFE_SCALE, az = A.at.z * LIFE_SCALE;
+  const out = {
+    stage: A.stage, label: A.label, t: +A.t.toFixed(2), age: +(A.age || 0).toFixed(2),
+    x: +ax.toFixed(2), z: +az.toFixed(2),
+    victim: { kind: A.victim.kind, down: A.victim.crash ? A.victim.crash.stage : null,
+              d: +A.victim.pos.distanceTo(A.at).toFixed(2) },
+    car: A.car ? { type: A.car.type, speed: +A.car.speed.toFixed(2),
+                   askew: +A.car.askew.toFixed(2), hazard: !!A.car.hazard } : null,
+    amb: A.amb ? { s: +A.amb.s.toFixed(1), speed: +A.amb.speed.toFixed(1),
+                   arrived: !!A.amb.arrived,
+                   visible: !!(life.ambGroup && life.ambGroup.visible) } : null,
+  };
+  if (stand) out.eye = standAt(ax, az, back === undefined ? 9 : back, bearing);
+  return out;
 };
 
 /* Every number this section is judged on, for the harness in docs/RUNBOOK.md

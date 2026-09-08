@@ -76,6 +76,10 @@ does not carry the world — the repository is still what you clone.
   typed in.
 - `redact`, the launcher for Windows, and systemd and launchd units in
   `docs/RUNBOOK.md` for everyone else.
+- A demo session in `data/demo.json`, so `index.html` has something to play
+  before you have pointed it at a project of your own. It is a real 55-second
+  Claude Code session exported with `tools/export_replay.py` — ten tool calls,
+  one of which fails, which is what puts an ambulance on the street.
 - An asset set that is entirely CC0 (Kenney, Quaternius, Poly Haven) plus one
   model of the studio's own. `assets/CREDITS.md` has the licence table.
 
@@ -93,6 +97,9 @@ does not carry the world — the repository is still what you clone.
   road network holds, one or two vehicles can briefly overlap at the crossroads
   while the side street is gridlocked. It is 45 to 75 frames in 600 and it is
   in `docs/TESTS.md` with the measurement.
+- The demo session's masthead line is the prompt that was actually typed, so it
+  opens "Reply in English only". It is a verbatim export and it was left
+  verbatim; `docs/DECISIONS.md` says why.
 
 Licence: Apache-2.0. Built by [Wild Digital
 Moments](https://digital.wildmoments.at/).

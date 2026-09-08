@@ -18,6 +18,96 @@ below describes this tree, not the one it came from.
 
 ---
 
+## The accident finishes, and there is a demo to watch it in — 2026-09-08 (later)
+
+Two things happened after phase D. The private install this fork was cut from
+kept working on the same morning and fixed the living layer's accident; those
+fixes are ported here. And gap 8 — the two 404s a bare `index.html` produces —
+is closed by shipping a real demo session in `data/demo.json`.
+
+### The four fixes ported from the private install
+
+Ported by hand rather than by merge: the fork's own phase-A/B changes sit in the
+same functions (the rename, `config.json`, the CC0 catalogue, the vehicle
+`length` dial and the tolerant loaders), and all of those are kept.
+
+**1 · `life.js` — the accident is bounded now, and it moves to the victim.**
+Six new constants above `_stepAccident`, each named for the failure it closes:
+`ACCIDENT_NEAR` (12 m), `APPROACH_GRACE` (4 s), `APPROACH_DRIVE` (9 m/s),
+`APPROACH_BACK` (10 m), `ACCIDENT_MAX` (75 s) and `AMB_RUN` (70 m). What they
+fix, measured on the install this came from:
+
+- `reportError()` put the impact on the lane nearest the ERROR and then took the
+  actor nearest THAT, so on a sparse street the victim could be 126 m away and
+  the collision could never happen. `_nearestLane()` was lifted out of
+  `reportError()` so the impact can be **re-seated on the lane point nearest the
+  victim** when the two are further apart than `ACCIDENT_NEAR`. Dense streets are
+  untouched: `life.html` measures 0–4 m and never re-anchors.
+- `approach` ended only on contact, and a car in traffic is not guaranteed to
+  arrive. After `APPROACH_GRACE` the accident drives the car in itself
+  (`_forceApproach()`), after `_stepVehicles` has run so the two passes cannot
+  fight over the arc length. If the host has popped the car out of
+  `life.vehicles` the victim collapses where it stands (`_collapseVictim()`) and
+  the ambulance still comes. `ACCIDENT_MAX` tears down anything still wedged, so
+  the exclusive slot is freed and the next error can stage.
+- the ambulance entered at the lane's nearest END — 778 m on a city avenue,
+  sixty seconds of siren before `arrived` began. `AMB_RUN`, clamped to the lane
+  end, gives a long lane five seconds and leaves a short one exactly as it was.
+- `_endAccident()` is the single teardown, called by the end of `clear` and by
+  the watchdog.
+
+**2 · `city.js` — the crowd fit no longer throws the victim away.**
+`setLifePopulation()` refits the crowd every 1.4 s and pops surplus people into
+a reserve; the crashed body was in that fit and came back out on another avenue,
+measured 422 m from the wreck the ambulance was still attending. An actor with
+`a.crash` is kept and left where it is. Also new here: `lifeRate` /
+`setLifeRate()` (see 3), `standAt()` lifted unchanged out of `__lifeStand` so
+both hooks use one lens, and `window.__lifeAccident(stand, back, bearing)` —
+where the incident is in city units, which stage it is in, and optionally the
+free-fly pose on it.
+
+**3 · `replay.js` — a recording's crowd runs at the film's speed.**
+One line in `startRecord()`: `City.setLifeRate(clock.speed)`. A record frame is
+worth a fixed 1/30 s of film but the transport advances the session clock by
+`clock.speed` times that, and the crowd is the one layer paced off wall time, so
+it ran the accident at a fraction of the speed of the film around it.
+`life.update()` clamps the product to 0.08 s itself, so the ceiling is 2.4× a
+record frame and nothing teleports. Live pages are unaffected — `lifeRate` is 1
+everywhere else.
+
+**4 · `globe.js` — `?signs=<name>` draws one plaque.**
+Two lines: `SIGNS_ONLY` beside the other capture flags and one `continue` in
+`buildSigns()`. It filters the sign LAYER only — the planet, its settlements and
+the HUD's own count are untouched. It exists because a film of this planet at
+label size publishes the directory name of every project on the machine.
+Measured here: signs built **31 → 1**.
+
+**What was NOT ported.** Everything else in the private tree's diff is that
+tree's own: the Hunyuan catalogue and its `face` values, the hard-coded home
+directory and continent table, the Wild Moments parrot rule, the strict asset
+loader. The fork's versions of all of those stay.
+
+### The demo fixture — gap 8 closed
+
+`data/demo.json` is a **real** Claude Code session, run once for this purpose in
+a throwaway English project and exported with this repo's own
+`tools/export_replay.py`. 32 events, 10 tool calls, 5.4 KB. The session reads
+four files, writes four, reads one that does not exist — that failing `Read` is
+what stages the accident — and writes a note about it.
+
+It is not redacted, and DECISIONS says why: redaction would turn every building
+into `file-9e12.md` and the town into `town-3f9a`, which is the opposite of what
+a first-run demo is for. What the fixture carries instead is a project that has
+nothing private in it, with the one machine-specific thing in an export — the
+absolute path — rewritten to `C:/projects/widget-shop` before it was committed.
+A grep over the file for the username, `Desktop`, `Users` and `AppData` returns
+zero. The throwaway project and its transcript were deleted afterwards.
+
+`data/sample.json` is deliberately still absent: `replay.js` probes `demo.json`
+first and never reaches the second name, so a bare `index.html` is now **zero**
+4xx and zero console errors.
+
+
 ## The release plan
 
 Four phases. **A, B and C are done. D is prepared but NOT pushed** — there is
@@ -393,22 +483,23 @@ dropped, so this is correct rather than pending), and the release zip's
 there is a release to point at. Phase D proved both work against a `file://`
 URL and left them empty; filling them is step 4 of `docs/PUBLISH.md`.
 
-**2. `data/` ships empty, and the fixtures it held are gone.**
-Left behind on purpose — they were exports of private sessions. What referenced
+**2. `data/` ships one fixture, and the rest are gone.**
+The private-session exports were left behind on purpose; `data/demo.json` was
+rebuilt from a throwaway public session on 2026-09-08 (gap 8). What referenced
 them, checked by grep:
 
 | fixture | referenced by | effect of its absence |
 |---|---|---|
-| `data/demo.json` | `replay.js:900` (first fallback when no `?src=`/`?project=`), plus comments in `city.js` | with no fixture and no live project, `replay.js` shows its own "No session to replay yet" fault message |
-| `data/sample.json` | `replay.js:900` (second fallback) | same |
+| `data/demo.json` | `replay.js:900` (first fallback when no `?src=`/`?project=`), plus comments in `city.js` | **present since 2026-09-08** — a bare `index.html` plays it |
+| `data/sample.json` | `replay.js:900` (second fallback) | never reached now that `demo.json` answers the first probe |
 | `data/sample-project.json` | `replay.js` comments only — it was a three-street `?src=` fixture used by a framing test | no runtime path breaks; the multi-street framing check has no fixture |
 | `data/this-session.json` | **nothing in this tree** | no effect |
 | `data/sample-file.txt` | `interior.js:512` — fetched to dress an interior wall when `GET /api/project/file` is unavailable | the fixture branch has nothing to show; `interior.js:1076` still labels that mode "FIXTURE" |
 
 None of these is referenced from an HTML page directly; the fallbacks all live
 in `replay.js` and `interior.js`. `archive/tree/` has its own copies referenced
-by its own docs and is not part of the live app. The only thing in `data/` today
-is `.cache/`, which is gitignored and regenerates.
+by its own docs and is not part of the live app. `data/` today holds
+`demo.json` and `.cache/`, and the cache is gitignored and regenerates.
 
 **3. ~~`redact` is a no-op.~~ Closed in phase C.** Do not confuse `redact` with
 `export_replay.redact()`, which is a different and older thing: that one strips
@@ -450,10 +541,12 @@ for its tail to reach the crossing lane. Two fixes were tried and reverted with
 their numbers — `docs/TESTS.md` 12.1. The real fix is a junction model that can
 clear its own box.
 
-**8. `index.html` opened bare produces two 404s.** `data/demo.json` and
-`data/sample.json`, the fixtures gap 2 above describes. The page handles it and
-says so on screen; the console does not. Two lines either way — a small public
-fixture, or drop the probes in `replay.js`.
+**8. ~~`index.html` opened bare produces two 404s.~~ Closed 2026-09-08.**
+`data/demo.json` now ships — a real 32-event session, 5.4 KB, described in the
+section at the top of this file. `replay.js` finds it on the first probe and
+never asks for `data/sample.json`, so a bare `index.html` is zero 4xx and zero
+console errors, and a first-time user sees a city with a crew and an accident in
+it instead of "No session to replay yet".
 
 **9. Three module docs reference screenshots that no longer exist.**
 `docs/BUILDINGS.md`, `docs/DRONES.md` and `docs/LIFE.md` name roughly twenty
@@ -493,7 +586,7 @@ tools/recorder.py        drives a page at ?record=1 and writes an MP4
 launcher/                Windows: install / start / restart / open / screensaver /
                          uninstall (PowerShell 5.1), make_icon.py, the .ico
 assets/                  manifest.json + CC0 packs; fetch_assets.py re-downloads them
-data/                    empty in the repo; .cache/ and vault.json are generated
+data/                    demo.json, the shipped fixture; .cache/ and vault.json are generated
 archive/                 the superseded 2D radial-tree renderer, kept runnable
 docs/                    see docs/README.md
 ```

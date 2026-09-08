@@ -2516,6 +2516,19 @@ const CROSS_CAP = 10;       // how many people one crossing holds at 0.9 m of pe
 const CROSS_STOPLINE = 2.0; // metres between a stopped bumper and the zebra's near edge
 const JAY_CLEAR = 2.5;      // metres a driver leaves in front of somebody in the road
 
+/* THE ACCIDENT'S BOUNDS, and every one of them exists because an accident that
+   never finishes does not merely look wrong — it SWALLOWS every later error.
+   One is in flight at a time, so a collision wedged in `approach` declines the
+   whole rest of the session. Measured on a real `?record=1` replay of the promo
+   town before these existed: staged at frame 119, then 581 consecutive frames
+   in `approach`, and every error after it declined (docs/HANDOFF.md). */
+const ACCIDENT_NEAR = 12.0;   // m: further than this from the impact point, the accident moves TO the victim
+const APPROACH_GRACE = 4.0;   // s of life time the ordinary traffic gets to deliver the car by itself
+const APPROACH_DRIVE = 9.0;   // m/s the accident drives the car in at once that grace is up
+const APPROACH_BACK = 10.0;   // m behind the impact the forced run starts
+const ACCIDENT_MAX = 75.0;    // s: a wedged accident is torn down so the next error can stage
+const AMB_RUN = 70.0;         // m of lane the ambulance drives in over, however long the lane is
+
 /* The pedestrian day, as a cycle: home, a shop door, a bench, the plaza, home.
    One constant read by both ends of it — `_pedestrian()` seeds a fresh walker
    onto a random stage of it (see there for why) and `_nextErrand()` walks it
@@ -6483,6 +6496,24 @@ export class Life {
      One at a time, on purpose. Two wrecks and two ambulances on one street
      stops reading as an incident and starts reading as a demolition derby, and
      the errors that arrive in bursts are exactly the ones that would do it. */
+  /* The lane point nearest a world position — `{ lane, s }`, or null on a
+     street with no lanes. Two callers below: where the error happened, and (when
+     that is nowhere near anybody) where the victim is standing. */
+  _nearestLane(p) {
+    let lane = null, s0 = 0, best = Infinity;
+    for (const ln of this.lanes) {
+      for (let i = 1; i < ln.pts.length; i++) {
+        const a = ln.pts[i - 1], q = ln.pts[i];
+        const ex = q.x - a.x, ez = q.z - a.z;
+        const t = clamp(((p.x - a.x) * ex + (p.z - a.z) * ez) / (ex * ex + ez * ez || 1), 0, 1);
+        const dx = p.x - (a.x + ex * t), dz = p.z - (a.z + ez * t);
+        const d = dx * dx + dz * dz;
+        if (d < best) { best = d; lane = ln; s0 = ln.cum[i - 1] + t * (ln.cum[i] - ln.cum[i - 1]); }
+      }
+    }
+    return lane ? { lane, s: s0 } : null;
+  }
+
   reportError(ev = {}) {
     if (this.accident) return null;
     if (!this.lanes.length) return null;
@@ -6494,17 +6525,8 @@ export class Life {
     if (Array.isArray(at)) at = new THREE.Vector3(at[0], at[1] || 0, at[2]);
     let lane = null, s0 = 0;
     if (at && at.x !== undefined) {
-      let best = Infinity;
-      for (const ln of this.lanes) {
-        for (let i = 1; i < ln.pts.length; i++) {
-          const p = ln.pts[i - 1], q = ln.pts[i];
-          const ex = q.x - p.x, ez = q.z - p.z;
-          const t = clamp(((at.x - p.x) * ex + (at.z - p.z) * ez) / (ex * ex + ez * ez || 1), 0, 1);
-          const dx = at.x - (p.x + ex * t), dz = at.z - (p.z + ez * t);
-          const d = dx * dx + dz * dz;
-          if (d < best) { best = d; lane = ln; s0 = ln.cum[i - 1] + t * (ln.cum[i] - ln.cum[i - 1]); }
-        }
-      }
+      const n = this._nearestLane(at);
+      if (n) { lane = n.lane; s0 = n.s; }
     } else {
       const h = hashString(ev.label || 'error');
       lane = this.lanes[h % this.lanes.length];
@@ -6534,7 +6556,7 @@ export class Life {
        What a person costs that a robot does not: only the near tier can be
        rotated. See Known limits. */
     let victim = null, vd = Infinity;
-    const cx = lane.at(s0, _v3, _v3b).clone();
+    let cx = lane.at(s0, _v3, _v3b).clone();
     for (const a of this.actors) {
       if (a.crash) continue;
       if (a.kind !== 'robot' && a.kind !== 'person') continue;
@@ -6544,6 +6566,23 @@ export class Life {
       if (d < vd) { vd = d; victim = a; }
     }
     if (!victim) return { why: 'nobody to stage it on' };
+
+    /* AND WHERE, AGAIN, WHEN THERE IS NOBODY NEAR THE ERROR. The impact point
+       above is the lane nearest the ERROR; the victim is the actor nearest that
+       point, and on a sparse street those two can be a hundred metres apart —
+       measured on the promo town, 126.6 m, with a victim that walks 1.6 m/s and
+       a car on a 1.6 km loop it had already passed. That accident cannot happen,
+       and it is the whole of the wedged `approach` this pass closes.
+       So the collision moves to the body rather than the body to the collision:
+       the impact is re-seated on the lane point nearest the VICTIM, which is a
+       step off the kerb rather than a two-minute walk. Still deterministic — the
+       victim was chosen from the error's own position — and a street whose
+       people are already at the error is untouched, which is every host that
+       populates a street densely (life.html reads 0-4 m and never re-anchors). */
+    if (vd > ACCIDENT_NEAR * ACCIDENT_NEAR) {
+      const n = this._nearestLane(victim.pos);
+      if (n) { lane = n.lane; s0 = n.s; cx = lane.at(s0, _v3, _v3b).clone(); }
+    }
 
     /* Which car. The nearest one on this lane that is still SHORT of the spot,
        because a driver who has already gone past cannot hit anybody. */
@@ -6616,9 +6655,27 @@ export class Life {
     const A = this.accident;
     if (!A) return;
     A.t += dt;
+    /* THE WATCHDOG, over the whole incident and not over one stage of it. The
+       slot is exclusive, so an accident that gets stuck anywhere costs every
+       later error in the session, and no amount of care inside a stage can
+       promise it never happens on a host this file has not seen. Torn down, the
+       street goes back to normal and the next error stages. */
+    A.age = (A.age || 0) + dt;
+    if (A.age > ACCIDENT_MAX) { this._endAccident(); return; }
     const V = A.victim;
 
     if (A.stage === 'approach') {
+      /* THE BOUND. Ordinary traffic is given APPROACH_GRACE seconds to deliver
+         the car on its own — that is the version that reads best, a real driver
+         on a real lane — and after that the accident stops waiting and drives it
+         in itself. It has to: a car in traffic is not guaranteed to arrive. It
+         can sit at a red, queue behind a bus (docs/LIFE.md, the zebra deadlock
+         that held one approach for seventy seconds), or simply be past the
+         impact point on a 1.6 km loop. */
+      if (A.t > APPROACH_GRACE) this._forceApproach(A, dt);
+      /* _forceApproach can end the approach outright when there is no drawable
+         car left to bring — it stages the collapse instead. */
+      if (A.stage !== 'approach') return;
       /* Into the road, at a walk. The driver is NOT braking for this one —
          `_stepVehicles` skips a car whose crash record is still on 'approach' —
          which is what makes it a collision and not a near miss. */
@@ -6679,18 +6736,64 @@ export class Life {
       if (A.car) A.car.askew += (0 - A.car.askew) * Math.min(1, dt * 3);
       if (A.amb) A.amb.leaving = true;
       if (A.amb) this._driveAmbulance(A, dt);
-      if (k >= 1) {
-        V.crash = null;
-        if (A.car) {
-          A.car.hazard = 0;
-          A.car.askew = 0;
-          A.car.want = 7;
-          A.car.crash = null;
-        }
-        if (this.ambGroup) this.ambGroup.visible = false;
-        this.accident = null;
-      }
+      if (k >= 1) this._endAccident();
     }
+  }
+
+  /* Everything the accident put on the street, put back. Two callers: the end
+     of the `clear` stage above, and the ACCIDENT_MAX watchdog. */
+  _endAccident() {
+    const A = this.accident;
+    if (!A) return;
+    if (A.victim) A.victim.crash = null;
+    if (A.car) {
+      A.car.hazard = 0;
+      A.car.askew = 0;
+      A.car.want = 7;
+      A.car.crash = null;
+    }
+    if (this.ambGroup) this.ambGroup.visible = false;
+    this.accident = null;
+  }
+
+  /* The approach, once the traffic has had its chance and not taken it. The
+     accident takes the car over: it is put on the accident's own lane a short
+     run behind the impact and advanced along it at a fixed closing speed, here,
+     AFTER _stepVehicles has moved everything — so this arc length is the frame's
+     last word and the two passes cannot fight over it. Monotone, so contact is
+     arithmetic rather than hope, and no `rand()` anywhere. */
+  _forceApproach(A, dt) {
+    const car = A.car;
+    /* A car the HOST has taken off the road is not drawn any more — city.js's
+       setLifePopulation() pops vehicles into a reserve when a street goes quiet
+       — so it can never be the thing that hits anybody. */
+    if (!car || this.vehicles.indexOf(car) < 0) { this._collapseVictim(A); return; }
+    if (car.lane !== A.lane) {
+      car.lane = A.lane;
+      car.arc = null; car.approach = null; car.turn = 0; car.turnTo = null;
+    }
+    const len = A.lane.length;
+    if (A.driveS === undefined) {
+      /* Keep the car where it is if it is already a short run short of the
+         impact — no teleport where none is needed — and otherwise put it on the
+         run's start, the same relocation reportError() does for an empty lane. */
+      const ds = ((A.s - car.s) % len + len) % len;
+      A.driveS = ds <= APPROACH_BACK ? car.s : ((A.s - APPROACH_BACK) % len + len) % len;
+    }
+    A.driveS = (A.driveS + APPROACH_DRIVE * dt) % len;
+    car.s = A.driveS;
+    A.lane.at(car.s, car.pos, car.head);
+    car.speed = APPROACH_DRIVE;
+    car.want = APPROACH_DRIVE;
+  }
+
+  /* No car can be brought to the body. The victim goes down where it stands and
+     the ambulance still comes — identical to reportError()'s carless staging,
+     because an accident is reported, never swallowed. */
+  _collapseVictim(A) {
+    A.car = null;
+    A.victim.crash = { stage: 'down', t: 0, lean: -Math.PI / 2, vy: 0 };
+    A.stage = 'hit'; A.t = 0;
   }
 
   /* The victim, once it is off its feet: a ballistic arc, a tumble, and then it
@@ -6777,9 +6880,19 @@ export class Life {
      on a lane graph is one of its two ends. */
   _callAmbulance(A) {
     const fromStart = A.s < A.lane.length - A.s;
+    /* AMB_RUN, and not the lane's own end. On life.html a street lane is a few
+       hundred metres and the two are the same number; a city avenue's lane is
+       1.6 km, and an ambulance that starts at the end of it spends sixty seconds
+       of life time driving before the `arrived` clock even starts — which is the
+       second half of an accident that never finishes. It still comes in from
+       off-camera: seventy metres at thirteen metres a second is five seconds of
+       siren before it is in shot. Short lanes are unchanged, the clamp keeps
+       them starting at the end exactly as before. */
+    const enter = fromStart ? Math.max(0, A.s - AMB_RUN)
+                            : Math.min(A.lane.length, A.s + AMB_RUN);
     A.amb = {
       dir: fromStart ? 1 : -1,
-      s: fromStart ? 0 : A.lane.length,
+      s: enter,
       /* Stopping short of the wreck by both vehicles' lengths, so it parks
          behind the scene rather than in it. */
       stopAt: A.s - (fromStart ? 1 : -1) * ((A.car ? A.car.len : 4) + 4),

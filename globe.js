@@ -133,6 +133,16 @@ const DRONES_OFF = params.get('drones') === '0';
 const DRONE_CONES = DRONES_OFF || params.get('drones') === 'cones';
 const DEMO_PRINT = params.get('demo') === 'print';
 
+/* ONE NAME ON THE MAP  <!-- GLOBE-SIGNS-DOC -->
+   `?signs=<name>` draws the plaque of that ONE settlement and of no other.
+   It exists because a film shot of this planet at label size publishes the
+   directory names of every project on the machine — twenty client engagements,
+   legible — and a promo shown to clients may not do that. It filters the SIGN
+   LAYER only: the planet, its 146 settlements and the HUD's own count are
+   untouched, so the shot is still the real world and the number under it is
+   still true. Empty (the normal case) changes nothing. */
+const SIGNS_ONLY = (params.get('signs') || '').trim().toLowerCase();
+
 /* THE PHONE  <!-- GLOBE-MOBILE-DOC -->
    `?mobile=1` is the preset the QR code on m.html links to, and `pointer:
    coarse` applies the same preset without the flag — a phone that reached this
@@ -4687,6 +4697,8 @@ function buildLandmarks() {
 function buildSigns() {
   for (const p of plan.placed) {
     if (!(p.cls === 'city' || p.cls === 'town' || p.form)) continue;
+    // GLOBE-SIGNS-DOC: `?signs=<name>` keeps this one plaque and drops the rest.
+    if (SIGNS_ONLY && String(p.town.name || p.town.id).toLowerCase() !== SIGNS_ONLY) continue;
     const spr = signSprite(p);
     if (spr) { scene.add(spr); signSprites.push(spr); p.sign = spr; }
   }
