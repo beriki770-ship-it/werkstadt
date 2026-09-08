@@ -3074,7 +3074,7 @@ def _strip_paths_and_code(text):
     if not text:
         return text
     # fenced blocks first: a directory listing inside ``` names files
-    # (site-editor's README lists MUSIKSCHULE-EDIT-RULES.md), not a trade
+    # (site-editor's README lists <PROJECT>-EDIT-RULES.md), not a trade
     text = _CODE_FENCE_RE.sub(" ", text)
     text = _CODE_SPAN_RE.sub(" ", text)
     text = _WIKILINK_RE.sub(" ", text)
