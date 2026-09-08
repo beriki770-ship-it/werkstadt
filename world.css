@@ -1,0 +1,478 @@
+/* =============================================================================
+   werkstadt — world.css
+   Chrome only, for world.html. The map itself is WebGL and owns every pixel
+   inside #globe; this file styles the type that floats over it.
+
+   Same tokens, same two typefaces and the same rule as styles.css: there are no
+   panels here. A click opens a caption — type on the picture, with an ink
+   shadow under it — and never a card, a sidebar or a box with a border.
+   Sections below are named exactly like the data-sid blocks in world.html.
+   ========================================================================== */
+
+
+/* =============================================================================
+   TOKENS — the same colour and type budget the session city uses
+   Copied, not imported: styles.css is the session city's chrome and is being
+   edited on its own schedule; the world must not change colour because that
+   file did. Three hues, and gold is the only accent.
+   ========================================================================== */
+:root {
+  --ink:      #12100d;
+  --bone:     #e9e1d2;
+  --bone-dim: #8d857a;
+  --gold:     #d2a62c;
+  --cool:     #6fa8b8;
+  --ember:    #e2703a;
+
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Mono",
+          "DejaVu Sans Mono", monospace;
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --ease: cubic-bezier(.22, .61, .36, 1);
+
+  /* One ink shadow, used by every piece of type that sits on the map. It is
+     what replaces a background box: legibility without a panel. */
+  --on-map: 0 1px 3px rgba(8,7,12,.92), 0 0 12px rgba(8,7,12,.7);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--mono);
+  font-weight: 300;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+
+
+/* =============================================================================
+   GLOBE — the WebGL canvas the terrain and the settlements are drawn into
+   The vignette sits on top of the canvas, same as the session city: as CSS it
+   costs nothing per frame, where a post-process pass costs a full-screen draw.
+   The top scrim is heavier than the bottom because the dusk band is up there.
+   ========================================================================== */
+#globe {
+  position: fixed; inset: 0;
+  background: #0b0a10;
+}
+/* touch-action: none is LOAD-BEARING and not a tidy-up. Without it the browser
+   claims the first two fingers on the canvas for its own page pan and pinch,
+   the pointer events for them are cancelled before world.js sees the second
+   one, and the whole touch layer — orbit, pinch zoom, twist, tap, double tap,
+   long press — silently does nothing on a phone. */
+#map { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+#map.dragging { cursor: grabbing; }
+#globe::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  /* The top scrim is a LONG ramp now, and a shallower one. At .70 falling to
+     transparent inside a third of the frame it met the sky's own bright band
+     head-on and the two drew a visible horizontal edge across the whole
+     picture — read as "an orange sky band with a hard edge" in the verdict.
+     Six stops over half the frame, none of them steeper than .12, and the
+     masthead still sits on something dark enough to read on. */
+  background:
+    /* Deeper corners. Next to the session city the world's dusk frame measured
+       flat: the whole picture sat in the middle of the range with no true black
+       anywhere in it, and that — not the modelling — is what reads as "less
+       real" in a two-up. The vignette is where a true black comes from for free. */
+    radial-gradient(120% 92% at 50% 54%, transparent 28%, rgba(6,5,10,.22) 58%,
+                    rgba(4,3,8,.52) 82%, rgba(2,2,5,.84) 100%),
+    linear-gradient(to bottom, rgba(8,7,12,.46) 0%, rgba(8,7,12,.34) 7%,
+                               rgba(8,7,12,.21) 14%, rgba(8,7,12,.11) 22%,
+                               rgba(8,7,12,.04) 30%, transparent 40%),
+    linear-gradient(to top,    rgba(8,7,12,.60) 0%, transparent 26%);
+}
+
+
+/* =============================================================================
+   MASTHEAD — the word World, the real counts, and the wall clock
+   ========================================================================== */
+#masthead {
+  position: fixed; top: 34px; left: 40px;
+  max-width: 46vw;
+  pointer-events: none;
+  text-shadow: var(--on-map);
+  animation: rise-in 1.1s var(--ease) both .15s;
+}
+#world-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(30px, 3.6vw, 52px);
+  line-height: 1.02;
+  letter-spacing: .004em;
+}
+/* THE GLOBE LINK. Mono, small, beside the serif title — a label on the title,
+   not a second title. #masthead is pointer-events:none so a drag anywhere over
+   it still orbits the map; this one element takes them back for itself. */
+#globe-link, .mast-link {
+  pointer-events: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: .08em;
+  vertical-align: middle;
+  margin-left: .45em;
+  color: var(--bone-dim);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(233, 225, 210, .28);
+  padding-bottom: 1px;
+}
+#globe-link:hover, #globe-link:focus-visible,
+.mast-link:hover, .mast-link:focus-visible { color: var(--gold); }
+
+/* The counts line is the only place numbers appear outside a caption, and every
+   one of them is a count of something that actually happened. */
+#world-counts {
+  margin: .45em 0 0;
+  font-size: 13px;
+  letter-spacing: .02em;
+  color: var(--bone-dim);
+}
+#world-counts b { font-weight: 500; color: var(--bone); }
+#world-counts .alive { color: var(--gold); }
+#world-clock {
+  margin: .3em 0 0;
+  font-size: 12px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+
+/* =============================================================================
+   HOVER — one line under the cursor: the town's name and when it last moved
+   ========================================================================== */
+#hover {
+  position: fixed; left: 0; top: 0;
+  pointer-events: none;
+  font-size: 12.5px;
+  letter-spacing: .015em;
+  text-shadow: var(--on-map);
+  white-space: nowrap;
+  transform: translate(14px, -26px);
+  transition: opacity .16s var(--ease);
+}
+#hover b { font-weight: 500; color: var(--bone); }
+#hover span { color: var(--bone-dim); }
+#hover[hidden] { display: none; }
+
+
+/* =============================================================================
+   CAPTION — what is happening in one town, in plain words
+   Anchored to the town on screen, positioned by world.js every frame. No box,
+   no border, no background: an ink shadow and a single gold rule are what hold
+   it together. This is the one thing a click opens.
+   ========================================================================== */
+#caption {
+  position: fixed; left: 0; top: 0;
+  width: min(30rem, 42vw);
+  pointer-events: none;
+  text-shadow: var(--on-map);
+  z-index: 3;                    /* over the masthead when the town is top-left */
+  /* Opacity only. `transform` here would win over the inline one world.js
+     writes every frame, and the caption would never leave the corner. */
+  animation: caption-in .4s var(--ease) both;
+}
+#caption[hidden] { display: none; }
+/* The rule is the anchor line back to the town; it is the only graphic here. */
+#caption::before {
+  content: "";
+  display: block;
+  width: 34px; height: 1px;
+  background: var(--gold);
+  margin-bottom: .8em;
+  opacity: .8;
+}
+#cap-name {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(22px, 2.3vw, 32px);
+  line-height: 1.05;
+}
+#cap-path {
+  margin: .25em 0 0;
+  font-size: 11px;
+  color: var(--bone-dim);
+  letter-spacing: .02em;
+  word-break: break-all;
+}
+#cap-state {
+  margin: .9em 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+#cap-state .line { display: block; }
+#cap-state .quiet { color: var(--bone-dim); }
+#cap-state .tool { color: var(--cool); }
+#cap-agents {
+  margin: .8em 0 0; padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+#cap-agents li::before {
+  content: "◆ ";
+  color: var(--gold);
+  font-size: 9px;
+  vertical-align: 2px;
+}
+#cap-agents li.sub::before { color: var(--cool); }
+#cap-open {
+  margin: .9em 0 0; padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--bone-dim);
+}
+#cap-open li::before { content: "— "; color: var(--ember); }
+#cap-more { color: var(--bone-dim); }
+#cap-hint {
+  margin: 1em 0 0;
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: .85;
+}
+
+
+/* =============================================================================
+   HINTS — every control, six seconds on the first visit and again on H
+   The fade lands at 5.3 s and runs 0.7 s so the card is gone at six, which is
+   the number the help card is specified in; showHints() restarts the animation
+   by hand, because re-showing a hidden element does not replay one.
+   ========================================================================== */
+/* Centred by `left: 0; right: 0` and text-align, NOT by translateX(-50%):
+   rise-in's own to-state is `transform: none`, so a centring transform on this
+   element is wiped the moment the animation ends and the card lands off to one
+   side. It also has to wrap now — the list is ten controls long. */
+#hints {
+  position: fixed; left: 0; right: 0; bottom: 34px;
+  padding: 0 24px;
+  text-align: center; line-height: 1.9;
+  font-size: 12px;
+  color: var(--bone-dim);
+  text-shadow: var(--on-map);
+  pointer-events: none;
+  animation: rise-in .9s var(--ease) both .1s, fade-out .7s var(--ease) both 5.3s;
+}
+#hints[hidden] { display: none; }
+
+/* =============================================================================
+   FREE-FLY HUD — one line, only while the lens is off the orbit
+   Same weight as the hints: a caption, not a panel. Bottom-centre is taken by
+   the hints card for six seconds, so this sits above it.
+   ========================================================================== */
+#free-hud {
+  position: fixed; left: 0; right: 0; bottom: 78px;
+  text-align: center;
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--gold); text-shadow: var(--on-map);
+  pointer-events: none;
+  animation: rise-in .5s var(--ease) both;
+}
+#free-hud[hidden] { display: none; }
+#hints kbd {
+  font: inherit;
+  color: var(--bone);
+  border-bottom: 1px solid rgba(233,225,210,.3);
+  padding: 0 .2em;
+}
+
+
+/* =============================================================================
+   FAULT — plain language when the server is not there
+   ========================================================================== */
+#fault {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  text-align: center;
+  padding: 2rem;
+}
+#fault[hidden] { display: none; }
+#fault p {
+  max-width: 34rem;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--bone-dim);
+  text-shadow: var(--on-map);
+}
+#fault code { color: var(--bone); }
+
+
+/* =============================================================================
+   SEARCH — the address bar. An underline, not a box: this page has no panels,
+   and a bordered input would be the first one.
+   ========================================================================== */
+#search {
+  position: fixed; left: 50%; top: 38%;
+  /* CENTRED BY MARGIN, not by transform, and the transform is why. `rise-in`
+     ends on `transform: none` and runs with fill-mode `both`, so the animation
+     kept overriding this element's own translateX(-50%) for ever: the panel has
+     always started at the middle of the screen and run off its right edge. It
+     was survivable while the panel was one line — at 390 px the quick-lists
+     added under the field (controls.js) were half off the screen. Measured
+     2026-09-07: `#search` came back x=195, right=515 in a 390 px viewport. */
+  margin-left: calc(min(46rem, 82vw) / -2);
+  width: min(46rem, 82vw);
+  animation: rise-in .28s var(--ease) both;
+}
+#search[hidden] { display: none; }
+#search-input {
+  display: block; width: 100%;
+  background: none; border: 0;
+  border-bottom: 1px solid rgba(233,225,210,.35);
+  font-family: var(--mono);
+  font-size: clamp(20px, 3.2vw, 34px);
+  color: var(--bone);
+  padding: .2em 0 .25em;
+  text-shadow: var(--on-map);
+}
+#search-input:focus { outline: none; border-bottom-color: var(--gold); }
+#search-input::placeholder { color: rgba(141,133,122,.75); }
+#search-hits {
+  margin: .7em 0 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  text-shadow: var(--on-map);
+  min-height: 1.2em;
+}
+
+/* =============================================================================
+   QUALITY — one line, bottom right, gone in under three seconds
+   ========================================================================== */
+#quality {
+  position: fixed; right: 26px; bottom: 30px;
+  font-size: 12px; letter-spacing: .04em;
+  color: var(--bone-dim);
+  text-shadow: var(--on-map);
+  animation: rise-in .3s var(--ease) both;
+}
+#quality[hidden] { display: none; }
+
+/* =============================================================================
+   INSIDE A LANDMARK — the page window's DOM layer, and the walker's one line
+   Both are the session city's, verbatim: interior.js is one module and it draws
+   its CSS3D layer into an element with one id, so the two pages that use it have
+   to style that id the same way or the same room looks different in each.
+   ========================================================================== */
+/* The layer the live page is laid out on. Fixed, full-bleed, and behind the
+   chrome: a CSS3D element is DOM over the canvas and cannot be occluded by the
+   hall's own walls, so interior.js hides it whenever the reader is not standing
+   at the station it belongs to. */
+#interior-css3d {
+  position: fixed; inset: 0; z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* The iframe carries the page's own design, so the only thing said about it here
+   is that it is a window and not a browser: no border, no scrollbar, a warm
+   ground so a page that has not painted yet is not a white flash in a dusk hall,
+   and a mild hold-down because this layer does not go through the bloom pass and
+   a white page at full brightness reads as a lamp rather than as a screen. */
+.interior-page {
+  border: 0;
+  background: #f2ece2;
+  outline: 1px solid rgba(210, 166, 44, .75);
+  filter: brightness(.86) saturate(.94);
+}
+
+/* Where you are inside a landmark, and how to leave. Bottom centre, two lines:
+   the place, then the keys — a viewer who has just walked through a door needs
+   the second line. */
+#interior-hud {
+  position: fixed; left: 50%; bottom: 34px; z-index: 3;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  max-width: min(86vw, 70ch);
+}
+#interior-hud[hidden] { display: none; }
+#interior-hud p { margin: 0; }
+#interior-where {
+  font-size: 13px;
+  color: var(--bone);
+  background: rgba(10, 9, 14, .62);
+  padding: 4px 12px;
+}
+#interior-hud .keys {
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+#interior-hud kbd {
+  font: inherit;
+  color: var(--bone);
+  border-bottom: 1px solid rgba(233, 225, 210, .28);
+  padding-bottom: 2px;
+  margin: 0 .2em;
+}
+
+
+/* =============================================================================
+   THE PHONE — the hint line becomes a bottom sheet
+
+   On a desktop the hints are one 12 px line floating over the map, which works
+   because a mouse user reads them once and never needs them again. On a phone
+   the same line is six words wide, wraps four times over the picture and lands
+   under the browser's own bottom bar. A sheet is the shape a phone already uses
+   for "here is what you can do": it sits ON the bottom edge, has its own ground
+   so the type is readable over water as well as over a roof, respects the safe
+   area, and is dismissed by the same six-second timer the line is.
+   ========================================================================== */
+body.mobile #hints {
+  left: 0; right: 0; bottom: 0;
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  font-size: 14px; line-height: 2.1;
+  text-align: center;
+  color: var(--bone);
+  background: linear-gradient(to top, rgba(11, 10, 16, .94), rgba(11, 10, 16, .72));
+  border-top: 1px solid rgba(233, 225, 210, .12);
+  text-shadow: none;
+}
+/* A phone has no keys, so the <kbd> boxes are gesture names — the underline
+   that says "this is a key" is wrong on "pinch". */
+body.mobile #hints kbd { border-bottom: none; color: var(--gold); }
+/* THE MASTHEAD, on a 390 px screen. `max-width: 46vw` is a desktop measurement —
+   half of a 1440 px window is 660 px and the counts line fits on one. Half of
+   390 is 180, so the same line wrapped to three, ran into the hover chip under
+   it, and the first mobile capture had two layers of type on top of each other.
+   It gets the width it needs and a smaller counts line; the serif title keeps
+   its own clamp, which already bottoms out at 30 px. */
+body.mobile #masthead { top: 18px; left: 20px; right: 20px; max-width: none; }
+body.mobile #world-counts { font-size: 11px; line-height: 1.7; }
+
+
+/* =============================================================================
+   SCREENSAVER — nobody is at the keyboard, so nothing asks for a keypress
+   ========================================================================== */
+body.screensaver #hints,
+body.screensaver #cap-hint,
+body.screensaver #quality { display: none; }
+
+
+/* =============================================================================
+   MOTION — two curves for the whole page
+   ========================================================================== */
+@keyframes rise-in  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes caption-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #masthead, #caption, #hints, #search, #quality { animation: none; }
+}

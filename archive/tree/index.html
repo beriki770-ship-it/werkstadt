@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Live — watch a session work</title>
+<meta name="description" content="A real Claude Code session, replayed as a growing tree of files with the agents that touched them.">
+
+<!-- Fonts are the whole typographic identity, so they load render-blocking on purpose:
+     a flash of Arial in the title would undo the look before the first frame draws. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<!-- The tab icon is the orchestrator orb itself: a gold ring on warm ink. Inline
+     so it costs no request, and so the tab is not a 404 in the console. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312100d'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23d2a62c' stroke-width='3'/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="styles.css">
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="../../humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     FIELD — the canvas everything is drawn into
+     One canvas, no DOM nodes per file: 300 file nodes as elements would cost
+     300 layout boxes per frame, which is exactly the budget we do not have.
+     ========================================================================= -->
+<section id="field" data-sid="field" data-title="The animated tree of files and agents">
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <p class="sr-only" id="a11y-status" role="status" aria-live="polite">Loading session.</p>
+</section>
+
+<!-- =========================================================================
+     MASTHEAD — session title and elapsed clock, top-left
+     Deliberately not a "panel": no box, no border, it floats on the field.
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Session name and elapsed clock, top left">
+  <h1 id="session-title">…</h1>
+  <p id="session-meta"><span id="clock">0:00</span><span class="sep">·</span><span id="session-cwd"></span></p>
+</header>
+
+<!-- =========================================================================
+     TALLIES — running counts, top-right
+     Every number here is a count of events that actually arrived. Nothing is
+     estimated, projected or scaled to look good. If it did not happen, it is 0.
+     ========================================================================= -->
+<aside id="tallies" data-sid="tallies" data-title="Running counts of files, tool calls and agents">
+  <p><b id="n-files">0</b><span>files touched</span></p>
+  <p><b id="n-tools">0</b><span>tool calls</span></p>
+  <p><b id="n-agents">1</b><span>agents</span></p>
+</aside>
+
+<!-- =========================================================================
+     TICKER — the last few events, bottom
+     Newest line is bright at the bottom; older lines rise and fade out.
+     ========================================================================= -->
+<footer id="ticker" data-sid="ticker" data-title="One line per event, newest at the bottom">
+  <ol id="ticker-list"></ol>
+</footer>
+
+<!-- =========================================================================
+     TRANSPORT — feedback that only appears while you are changing something
+     Speed badge shows for a beat after a change, then leaves. Hints show once,
+     ever, per browser (localStorage) — a permanent legend would be clutter.
+     ========================================================================= -->
+<div id="speed-badge" data-sid="speed-badge" data-title="Playback speed, shown only just after it changes" hidden>1×</div>
+
+<div id="hints" data-sid="hints" data-title="Keyboard hints, shown once per browser" hidden>
+  <p><kbd>space</kbd> pause <kbd>←</kbd><kbd>→</kbd> ±10s <kbd>[</kbd><kbd>]</kbd> speed <kbd>L</kbd> follow</p>
+</div>
+
+<!-- =========================================================================
+     FALLBACK — if the replay file cannot be fetched, say so in plain words
+     ========================================================================= -->
+<div id="fault" data-sid="fault" data-title="Plain-language message when no session file loads" hidden>
+  <p id="fault-text"></p>
+</div>
+
+<script src="app.js"></script>
+<!-- === WDM-SEAL (body) — the 1px signature. Inherits currentColor, so it sits on any footer. === -->
+<style>
+/* The seal is a signature, not a badge: it stays under 20% until you look for it.
+   difference-blend, NOT currentColor: inheriting the footer's text colour assumed the
+   footer's text always contrasts with whatever is painted at the very bottom of the
+   page. On a dark decorative panel that runs to the page edge it did not, and the mark
+   vanished (cafe-fundstueck desktop, 2026-08-21). Difference against white is contrast
+   by construction, so it works on cream, near-black and mid-brown alike. */
+/* Bottom-LEFT, not the conventional bottom-right an artist would sign: the demos put a
+   fixed WhatsApp button in the right corner, and it covered the seal completely
+   (carmen-2, 2026-08-21). The left corner is the one nothing floats over.
+   30% and not 20%: difference-blend is weakest against mid-tones, and at 20% a warm tan
+   footer measured only 9 RGB of separation - under the 12 the mark needs to be seen. */
+.wdm-seal{display:block;text-align:left;padding:0 clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* On paper the mark is unreadable, so print spells the studio out instead. */
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

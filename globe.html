@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World — the planet every project stands on</title>
+<meta name="description" content="A real spherical world built from real data: five continents of work, every project Claude Code has opened as a city, town, village, hamlet or field, and a day/night terminator taken from the wall clock.">
+
+<!-- The same two typefaces as the island and the session city, loaded the same
+     way and for the same reason: JetBrains Mono is drawn INTO the 3D scene as
+     canvas textures, so nothing bakes a label before document.fonts.ready. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<!-- The tab icon is the planet: a lit crescent on dusk ink. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0d12'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23243040'/%3E%3Cpath d='M16 7a9 9 0 0 1 0 18a7 7 0 0 0 0-18z' fill='%23d2a62c'/%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="globe.css">
+<!-- The enter / exit / search cluster, shared with world.html and index.html.
+     Its own file because it is the same object on all three pages — see the
+     header comment in controls.css. -->
+<link rel="stylesheet" href="controls.css">
+<!-- The studio line and the sponsor button/chip, shared with the other
+     three views - see the header comment in credits.css. -->
+<link rel="stylesheet" href="credits.css">
+
+<!-- Three.js pinned to the exact version index.html and world.html use, from
+     one package, so the three views cannot drift onto different renderers
+     under a screenshot. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     PLANET — the WebGL canvas the whole world lives in
+     One canvas: six displaced cube-sphere faces, an ocean, an atmosphere shell,
+     a cloud deck and about a thousand buildings. As DOM elements the layout
+     alone would be the entire frame budget.
+     ========================================================================= -->
+<section id="globe" data-sid="planet" data-title="The 3D planet: five continents of work, an ocean and a real terminator">
+  <canvas id="map" aria-hidden="true"></canvas>
+  <p class="sr-only" id="a11y-status" role="status" aria-live="polite">Building the planet.</p>
+</section>
+
+<!-- =========================================================================
+     MASTHEAD — the title, the real counts and the wall clock, top-left
+     Every number in the counts line is a count of something that happened on
+     this machine. Nothing is rounded up, projected or padded.
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Title, live counts and the wall clock, top left">
+  <!-- The shelf of finished session films, one mono word next to the title —
+       the same shape world.html's `globe` link has. #masthead is
+       pointer-events:none, so the link turns them back on for itself alone. -->
+  <h1 id="globe-title">World <a class="mast-link" href="recordings.html">recordings</a></h1>
+  <p id="globe-counts">…</p>
+  <p id="globe-clock">--:--:--</p>
+  <!-- SPONSOR - the ask, in the masthead where the title already is.
+       Gold outline and nothing else: it must read as an offer, not as a
+       fifth navigation verb. -->
+  <a class="sponsor-btn" href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank">
+    <span class="heart" aria-hidden="true">♥</span> Sponsor
+  </a>
+</header>
+
+<!-- =========================================================================
+     HOVER — one line under the cursor while the mouse is over a settlement
+     ========================================================================= -->
+<div id="hover" data-sid="hover" data-title="Settlement name, class and how long ago it last moved, under the cursor" hidden></div>
+
+<!-- =========================================================================
+     CAPTION — what one settlement is, in plain words
+     Opened by a click and deliberately not a card: no border, no background,
+     no close button — Escape closes it.
+     ========================================================================= -->
+<article id="caption" data-sid="caption" data-title="The clicked settlement: its class, its real numbers and what is open" hidden>
+  <h2 id="cap-name"></h2>
+  <p id="cap-path" dir="auto"></p>
+  <!-- dir="auto" throughout: a project name is in whatever language Beri typed,
+       and this machine's newest work is Hebrew. -->
+  <p id="cap-state" dir="auto"></p>
+  <ul id="cap-agents" dir="auto"></ul>
+  <ul id="cap-open" dir="auto"></ul>
+  <p id="cap-hint"></p>
+</article>
+
+<!-- =========================================================================
+     SEARCH — the address bar. "/" opens it; a settlement name or a continent
+     name flies there. One line, underline only: a search BOX would be the panel
+     this page refuses to have.
+     ========================================================================= -->
+<div id="search" data-sid="search" data-title="Address search: type a settlement or a continent name" hidden>
+  <label class="sr-only" for="search-input">Fly to a settlement or a continent</label>
+  <input id="search-input" type="text" autocomplete="off" spellcheck="false"
+         placeholder="a project, a continent, a date…" dir="auto">
+  <p id="search-hits" dir="auto"></p>
+  <!-- Clickable addresses, for the desktop wallpaper where the field can be
+       focused with a click but nothing can be typed into it. Filled by
+       controls.js from the payload the planet is already built from. -->
+  <div id="search-quick" hidden></div>
+</div>
+
+<!-- =========================================================================
+     FREE-FLY HUD — one line, only while the lens is off the orbit
+     ========================================================================= -->
+<div id="free-hud" data-sid="free-hud" data-title="One line saying the camera is in free flight and how to leave it" hidden>
+  free flight · WASD along the ground · QE down and up · shift fast · F back
+</div>
+
+<!-- =========================================================================
+     QUALITY — a one-line toast when Q is pressed, or when the planet drops to
+     medium by itself under 33 fps.
+     ========================================================================= -->
+<div id="quality" data-sid="quality" data-title="Render quality, shown briefly when it changes" hidden></div>
+
+<!-- =========================================================================
+     HINTS — shown once per browser, then never again
+     ========================================================================= -->
+<div id="hints" data-sid="hints" data-title="Keyboard hints, or the touch gestures as a bottom sheet on a phone" hidden>
+  <p class="hint-keys">drag to turn the planet · scroll to zoom from orbit to a street · <kbd>/</kbd> to fly to a name or a date · <kbd>f</kbd> free-fly · <kbd>click</kbd> to read · <kbd>double-click</kbd> to go in · <kbd>p</kbd> replay the last print · <kbd>q</kbd> quality · <kbd>esc</kbd> to close</p>
+  <!-- The phone's own line. A keyboard hint on a device with no keyboard is
+       worse than no hint, so body.mobile swaps which of the two is shown; the
+       gestures are the ones nobody can discover by trying. -->
+  <p class="hint-touch">one finger turns the planet · two fingers pinch to zoom and twist to spin · <b>tap</b> to read a place · <b>double-tap</b> to go in · <b>press and hold</b> for the caption</p>
+</div>
+
+<!-- =========================================================================
+     FAULT — if the server is not running, say so in words a person can act on
+     ========================================================================= -->
+<div id="fault" data-sid="fault" data-title="Plain-language message when the live server is not answering" hidden>
+  <p id="fault-text"></p>
+</div>
+
+<!-- =========================================================================
+     CONTROLS — the three keyboard actions as buttons, bottom-right
+     `?wallpaper=1` is the desktop wallpaper and Lively forwards MOUSE ONLY to
+     it, so "/" , Escape and Enter never arrive there. Wired by controls.js;
+     the keys still work exactly as they did.
+     Bottom-RIGHT because the caption, the seal and the free-fly line all live
+     on the left and the bottom centre.
+     ========================================================================= -->
+<nav id="controls" data-sid="controls" data-title="Enter, exit and search as buttons, for a mouse with no keyboard" aria-label="Move through the world">
+  <!-- Hidden until there is something to leave: the globe IS the top level. -->
+  <button id="ctl-exit" type="button" hidden>back</button>
+  <!-- Shown by controls.js on the wallpaper only, where it opens a full-screen
+       window that HAS a keyboard, and inside that window, where it says "back
+       to desktop" and closes it again. Hidden in an ordinary tab: that tab has
+       a keyboard already. See controls.js CONTROLS-PLAY. -->
+  <button id="ctl-play" type="button" hidden>play</button>
+  <button id="ctl-search" type="button" aria-expanded="false" aria-controls="search">search</button>
+  <!-- Disabled until a place is clicked. The target's name is appended rather
+       than replacing the verb, so the button never changes width by a word. -->
+  <button id="ctl-enter" type="button" disabled aria-label="enter — click a place on the map first">enter<span class="ctl-target"></span></button>
+  <!-- The same ask at chip size, inside the cluster, because the desktop
+       wallpaper hides the masthead and this is the only thing a mouse can
+       still reach there. -->
+  <a class="sponsor-chip" href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank" title="Sponsor Werkstadt">
+    <span aria-hidden="true">♥</span> sponsor
+  </a>
+</nav>
+
+
+<!-- =========================================================================
+     CREDITS - who built this, where to hire them, where to sponsor it
+     Bottom centre on every page: the left corner is the W mark and the
+     caption, the right corner is the controls cluster. Styled in
+     credits.css.
+     ========================================================================= -->
+<footer class="credits" data-sid="credits" data-title="Who built this, where to hire the studio and where to sponsor the project">
+  <span>Built by <a href="https://digital.wildmoments.at/" rel="author noopener" target="_blank">Wild Digital Moments</a></span>
+  <span class="credits-sep" aria-hidden="true">·</span>
+  <a href="https://digital.wildmoments.at/werkstadt/" rel="noopener" target="_blank">Hire us</a>
+  <span class="credits-sep" aria-hidden="true">·</span>
+  <a href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank">Sponsor</a>
+</footer>
+
+<!-- config.json's client-visible slice, as a script rather than a fetch: the
+     continent rules have to be on `window` before the module below builds its
+     first frame. Served by server.py; absent when the page is opened straight
+     off the filesystem, which the module handles. -->
+<script src="/api/config.js"></script>
+<script type="module" src="globe.js"></script>
+<!-- === WDM-SEAL (body) — the 1px signature. Inherits currentColor, so it sits on any footer. === -->
+<style>
+/* The seal is a signature, not a badge: it stays under 20% until you look for it.
+   difference-blend, NOT currentColor: inheriting the footer's text colour assumed the
+   footer's text always contrasts with whatever is painted at the very bottom of the
+   page. On a dark decorative panel that runs to the page edge it did not, and the mark
+   vanished (cafe-fundstueck desktop, 2026-08-21). Difference against white is contrast
+   by construction, so it works on cream, near-black and mid-brown alike. */
+/* Bottom-LEFT, not the conventional bottom-right an artist would sign: the demos put a
+   fixed WhatsApp button in the right corner, and it covered the seal completely
+   (carmen-2, 2026-08-21). The left corner is the one nothing floats over.
+   30% and not 20%: difference-blend is weakest against mid-tones, and at 20% a warm tan
+   footer measured only 9 RGB of separation - under the 12 the mark needs to be seen. */
+.wdm-seal{display:block;text-align:left;padding:0 clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* On paper the mark is unreadable, so print spells the studio out instead. */
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+/* Every other element on this page is position:fixed, so the seal is the only
+   thing left in normal flow and would land in the top-left corner. Pinned. */
+.wdm-seal{position:fixed;left:0;bottom:0;z-index:5}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

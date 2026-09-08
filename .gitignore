@@ -1,0 +1,59 @@
+# Werkstadt — what never belongs in the repo.
+# The rule behind this file: everything here is either MACHINE-LOCAL state
+# (caches, logs, a browser profile) or PRIVATE (your transcripts, your vault,
+# your recordings). A clone must be able to produce all of it on first run.
+
+# --- your own configuration and secrets ------------------------------------
+# config.json is written from config.example.json the first time the server
+# starts. It holds YOUR paths, so it is yours alone and never committed.
+config.json
+data/auth.json
+*.secret
+
+# --- generated / cached ----------------------------------------------------
+data/.cache/
+data/vault.json
+data/world-index.json
+__pycache__/
+*.pyc
+
+# --- what the tool produces about you --------------------------------------
+# Recordings are MP4s of your own sessions: private by construction.
+recordings/
+launcher/*.log
+launcher/kiosk-profile/
+
+# --- the asset library -----------------------------------------------------
+# NONE of this is in git, and that is a decision rather than an oversight: the
+# textures, HDRIs and models are 103 MB, git keeps every version of a binary
+# forever, and a repository nobody clones is a repository nobody runs. They
+# ship as a zip attached to the GitHub Release instead, built by
+# tools/build_assets_zip.py, and a fresh clone gets them with either
+#     python assets/fetch_assets.py --release     (the zip, ~20 s)
+#     python assets/fetch_assets.py               (rebuilt from source, ~8 min)
+# What IS in git: assets/manifest.json (the index), assets/CREDITS.md (the
+# licence table) and assets/fetch_assets.py (how to get the rest).
+assets/textures/
+assets/hdri/
+assets/models/
+assets/life/
+assets/cc0/
+assets/drones/
+
+# The fetcher's working caches: downloaded source packs and the intermediate
+# conversions on the way to assets/cc0/. Never part of a release either.
+assets/_kenney_zips/
+assets/_quaternius_raw/
+assets/_cc0_raw/
+assets/*_list.json
+assets/*.zip
+assets/hunyuan/
+
+# The release zip itself is a build product.
+dist/
+
+# --- editors / OS ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

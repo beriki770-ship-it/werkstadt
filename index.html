@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Werkstadt — a city built by a session</title>
+<meta name="description" content="A real Claude Code session, replayed as a city that builds itself: one building per file, one drone per agent.">
+
+<!-- Fonts are the whole typographic identity, so they load render-blocking on purpose:
+     a flash of Arial in the title would undo the look before the first frame draws.
+     JetBrains Mono is also drawn INTO the 3D scene (plate and drone labels are canvas
+     textures), so the scene waits on document.fonts.ready before it makes them. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<!-- The tab icon is the skyline itself: three towers in gold on dusk ink. Inline so it
+     costs no request, and so the tab is not a 404 in the console. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0d12'/%3E%3Cg fill='%23d2a62c'%3E%3Crect x='5' y='16' width='6' height='11'/%3E%3Crect x='13' y='9' width='6' height='18'/%3E%3Crect x='21' y='19' width='6' height='8'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="styles.css">
+<!-- The enter / exit cluster, shared with globe.html and world.html. Its own
+     file because it is the same object on all three pages — see the header
+     comment in controls.css. -->
+<link rel="stylesheet" href="controls.css">
+<!-- The studio line and the sponsor button/chip, shared with the other
+     three views - see the header comment in credits.css. -->
+<link rel="stylesheet" href="credits.css">
+
+<!-- Three.js is pinned to an exact version and loaded from one package, so the addon
+     imports inside three's own files ("three", "./three.core.js") resolve to the same
+     copy. An unpinned "latest" would silently change the renderer under a screenshot. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     FIELD — the WebGL canvas the city is rendered into
+     One canvas, no DOM per building: 300 buildings as elements would cost 300
+     layout boxes a frame, which is exactly the budget we do not have.
+     ========================================================================= -->
+<section id="field" data-sid="field" data-title="The 3D city that builds itself while the session replays">
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <p class="sr-only" id="a11y-status" role="status" aria-live="polite">Loading session.</p>
+</section>
+
+<!-- =========================================================================
+     MASTHEAD — session title and elapsed clock, top-left
+     Deliberately not a "panel": no box, no border, it floats over the skyline.
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Session name and elapsed clock, top left">
+  <h1 id="session-title">…</h1>
+  <!-- dir="auto" because a session prompt is whatever language the person typed:
+       this export's is Hebrew, and left-to-right it reads back to front. -->
+  <p id="session-prompt" dir="auto"></p>
+  <!-- The project name moved up into the h1, so the meta line is the clock plus
+       the live-mode entry point, which only shows once replay.js confirms
+       server.py is actually there to answer /api/sessions. -->
+  <p id="session-meta"><span id="clock">0:00</span> <a id="live-link" href="?live=1" hidden>live</a> <a id="shelf-link" href="recordings.html">recordings</a></p>
+  <!-- SPONSOR - the ask, in the masthead where the title already is.
+       Gold outline and nothing else: it must read as an offer, not as a
+       fifth navigation verb. -->
+  <a class="sponsor-btn" href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank">
+    <span class="heart" aria-hidden="true">♥</span> Sponsor
+  </a>
+</header>
+
+<!-- =========================================================================
+     RECORD CARD — the only chrome ?record=1 leaves on screen
+     A shared clip needs to say what it is on its own, away from this page and
+     away from any caption: the title card opens the film and the same element,
+     refilled, closes it with the counts the session actually reached. Every
+     other overlay is hidden by `body.record` in styles.css.
+     ========================================================================= -->
+<div id="record-card" data-sid="record-card" data-title="Title card at the start and end of a recorded film" hidden>
+  <h2 id="record-title" dir="auto"></h2>
+  <p id="record-sub"></p>
+  <p id="record-end-line"></p>
+</div>
+
+<!-- =========================================================================
+     TALLIES — running counts, top-right
+     Every number here is a count of events that actually arrived. Nothing is
+     estimated, projected or scaled to look good. If it did not happen, it is 0.
+     ========================================================================= -->
+<aside id="tallies" data-sid="tallies" data-title="Running counts of files, tool calls and agents">
+  <p><b id="n-files">0</b><span>buildings</span></p>
+  <p><b id="n-tools">0</b><span>tool calls</span></p>
+  <p><b id="n-agents">1</b><span>agents</span></p>
+</aside>
+
+<!-- =========================================================================
+     TICKER — the last few events, bottom-left
+     Newest line is bright at the bottom; older lines rise and fade out.
+     ========================================================================= -->
+<footer id="ticker" data-sid="ticker" data-title="One line per event, newest at the bottom">
+  <ol id="ticker-list"></ol>
+</footer>
+
+<!-- =========================================================================
+     TRANSPORT — feedback that only appears while you are changing something
+     Speed badge shows for a beat after a change, then leaves. Hints show once,
+     ever, per browser (localStorage) — a permanent legend would be clutter.
+     ========================================================================= -->
+<div id="speed-badge" data-sid="speed-badge" data-title="Playback speed, shown only just after it changes" hidden>1×</div>
+
+<!-- Touch has no space bar. Shown only on a coarse pointer (replay.js), so a
+     mouse-and-keyboard visitor never sees a button duplicating a key they
+     already have. -->
+<button id="mobile-playpause" data-sid="mobile-playpause" data-title="Play/pause glyph, shown only on a touch device" hidden aria-label="play or pause">▸</button>
+
+<div id="hints" data-sid="hints" data-title="Every control, for six seconds on the first visit and on H" hidden>
+  <p><kbd>drag</kbd> orbit · <kbd>scroll</kbd> zoom · <kbd>right-drag</kbd> pan · <kbd>wasd</kbd> glide · <kbd>f</kbd> free-fly · <kbd>double-click</kbd> enter · <kbd>esc</kbd> back · <kbd>space</kbd> pause · <kbd>←</kbd><kbd>→</kbd> ±10s · <kbd>[</kbd><kbd>]</kbd> speed · <kbd>p</kbd> replay the last print · <kbd>h</kbd> help</p>
+  <!-- The print is the thing this city is FOR, and it happens when it happens.
+       ?demo=print jumps the transport to the busiest stretch of materialisation
+       in the session and plays it at half speed. -->
+  <p class="hint-url"><code>?demo=print</code> — jump to three buildings printing at once, at 0.5×</p>
+</div>
+
+<!-- =========================================================================
+     FREE-FLY HUD — one line, only while the lens is off the orbit
+     ========================================================================= -->
+<div id="free-hud" data-sid="free-hud" data-title="One line saying the camera is in free flight and how to leave it" hidden>
+  free · WASD QE · shift fast · F back
+</div>
+
+<!-- =========================================================================
+     PICK CAPTION — the name of the thing under the pointer
+     Follows the cursor, not the building: the camera orbits under the pointer
+     the whole time, and a caption chasing a moving projection wobbles.
+     ========================================================================= -->
+<div id="pick-caption" data-sid="pick-caption" data-title="Name of the building, district or session under the pointer" hidden></div>
+
+<!-- =========================================================================
+     INTERIOR HUD — one line, only while you are inside a building
+     Where you are, and how to get out. Not a panel and not a legend: the room
+     itself is the picture, and this is the caption under it.
+     ========================================================================= -->
+<div id="interior-hud" data-sid="interior-hud" data-title="Where you are inside a building, and how to leave" hidden>
+  <p><span id="interior-where"></span></p>
+  <p class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> glide <kbd>space</kbd>/<kbd>shift</kbd> up · down · drag to look <kbd>esc</kbd> back to the city</p>
+</div>
+
+<!-- =========================================================================
+     FALLBACK — if the replay file or WebGL is unavailable, say so in plain words
+     ========================================================================= -->
+<div id="fault" data-sid="fault" data-title="Plain-language message when no session file loads" hidden>
+  <p id="fault-text"></p>
+</div>
+
+<!-- =========================================================================
+     CONTROLS — the two keyboard actions as buttons, bottom-right
+     The same cluster globe.html and world.html carry, wired by controls.js.
+     NO search button here: this page has no address search to open, and
+     building one would be the duplicate the caveman rules exist to stop —
+     controls.js hides the button when a page passes no search.
+     ========================================================================= -->
+<nav id="controls" data-sid="controls" data-title="Enter and exit as buttons, for a mouse with no keyboard" aria-label="Move through the city">
+  <button id="ctl-exit" type="button" hidden>back</button>
+  <!-- The same play button globe.html and world.html carry, for the same
+       reason: a city is where the kiosk ends up, so the way out lives here too.
+       controls.js CONTROLS-PLAY. -->
+  <button id="ctl-play" type="button" hidden>play</button>
+  <button id="ctl-search" type="button" hidden>search</button>
+  <button id="ctl-enter" type="button" disabled aria-label="enter — click a building first">enter<span class="ctl-target"></span></button>
+  <!-- The same ask at chip size, inside the cluster, because the desktop
+       wallpaper hides the masthead and this is the only thing a mouse can
+       still reach there. -->
+  <a class="sponsor-chip" href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank" title="Sponsor Werkstadt">
+    <span aria-hidden="true">♥</span> sponsor
+  </a>
+</nav>
+
+
+<!-- =========================================================================
+     CREDITS - who built this, where to hire them, where to sponsor it
+     Bottom centre on every page: the left corner is the W mark and the
+     caption, the right corner is the controls cluster. Styled in
+     credits.css.
+     ========================================================================= -->
+<footer class="credits" data-sid="credits" data-title="Who built this, where to hire the studio and where to sponsor the project">
+  <span>Built by <a href="https://digital.wildmoments.at/" rel="author noopener" target="_blank">Wild Digital Moments</a></span>
+  <span class="credits-sep" aria-hidden="true">·</span>
+  <a href="https://digital.wildmoments.at/werkstadt/" rel="noopener" target="_blank">Hire us</a>
+  <span class="credits-sep" aria-hidden="true">·</span>
+  <a href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank">Sponsor</a>
+</footer>
+
+<script type="module" src="replay.js"></script>
+<!-- === WDM-SEAL (body) — the 1px signature. Inherits currentColor, so it sits on any footer. === -->
+<style>
+/* The seal is a signature, not a badge: it stays under 20% until you look for it.
+   difference-blend, NOT currentColor: inheriting the footer's text colour assumed the
+   footer's text always contrasts with whatever is painted at the very bottom of the
+   page. On a dark decorative panel that runs to the page edge it did not, and the mark
+   vanished (cafe-fundstueck desktop, 2026-08-21). Difference against white is contrast
+   by construction, so it works on cream, near-black and mid-brown alike. */
+/* Bottom-LEFT, not the conventional bottom-right an artist would sign: the demos put a
+   fixed WhatsApp button in the right corner, and it covered the seal completely
+   (carmen-2, 2026-08-21). The left corner is the one nothing floats over.
+   30% and not 20%: difference-blend is weakest against mid-tones, and at 20% a warm tan
+   footer measured only 9 RGB of separation - under the 12 the mark needs to be seen. */
+.wdm-seal{display:block;text-align:left;padding:0 clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* On paper the mark is unreadable, so print spells the studio out instead. */
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recordings — Werkstadt</title>
+<meta name="description" content="Every finished Claude Code session, kept as a film you can watch back and as a link that replays the real thing.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<!-- Same skyline tab icon the city carries, inline so it costs no request. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0d12'/%3E%3Cg fill='%23d2a62c'%3E%3Crect x='5' y='16' width='6' height='11'/%3E%3Crect x='13' y='9' width='6' height='18'/%3E%3Crect x='21' y='19' width='6' height='8'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="recordings.css">
+<!-- The studio line and the sponsor button/chip, shared with the other
+     three views - see the header comment in credits.css. -->
+<link rel="stylesheet" href="credits.css">
+
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     MASTHEAD — what this shelf is, and the way back to the three views
+     Same typographic shape as the other pages: a serif title with small mono
+     words beside it, no bar and no box.
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Page title, the count of films, and links back to the globe, island and city">
+  <h1>Recordings
+    <a class="mast-link" href="globe.html">globe</a>
+    <a class="mast-link" href="world.html">island</a>
+    <a class="mast-link" href="index.html">city</a>
+  </h1>
+  <p id="shelf-counts">…</p>
+  <!-- SPONSOR - the ask, in the masthead where the title already is.
+       Gold outline and nothing else: it must read as an offer, not as a
+       fifth navigation verb. -->
+  <a class="sponsor-btn" href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank">
+    <span class="heart" aria-hidden="true">♥</span> Sponsor
+  </a>
+</header>
+
+<!-- =========================================================================
+     SHELF — one section per project, one card per session
+     Built by recordings.js from GET /api/recordings. Empty until the first
+     render finishes, which is what #shelf-empty says in plain words rather
+     than leaving the page looking broken.
+     ========================================================================= -->
+<main id="shelf" data-sid="shelf" data-title="Every recorded session, grouped by project, newest first"></main>
+
+<p id="shelf-empty" data-sid="shelf-empty" data-title="Plain-language message while there is nothing on the shelf yet" hidden></p>
+
+<!-- =========================================================================
+     TOAST — one line confirming a copied link, bottom centre
+     A copy that says nothing is a copy you do twice.
+     ========================================================================= -->
+<div id="toast" data-sid="toast" data-title="One line confirming a link was copied" role="status" aria-live="polite" hidden></div>
+
+
+<!-- =========================================================================
+     CREDITS - who built this, where to hire them, where to sponsor it
+     Bottom centre on every page: the left corner is the W mark and the
+     caption, the right corner is the controls cluster. Styled in
+     credits.css.
+     ========================================================================= -->
+<footer class="credits" data-sid="credits" data-title="Who built this, where to hire the studio and where to sponsor the project">
+  <span>Built by <a href="https://digital.wildmoments.at/" rel="author noopener" target="_blank">Wild Digital Moments</a></span>
+  <span class="credits-sep" aria-hidden="true">·</span>
+  <a href="https://digital.wildmoments.at/werkstadt/" rel="noopener" target="_blank">Hire us</a>
+  <span class="credits-sep" aria-hidden="true">·</span>
+  <a href="https://digital.wildmoments.at/werkstadt/#sponsor" rel="noopener" target="_blank">Sponsor</a>
+</footer>
+
+<script type="module" src="recordings.js"></script>
+
+<!-- === WDM-SEAL (body) — the 1px signature. === -->
+<style>
+.wdm-seal{display:block;text-align:left;padding:2rem clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

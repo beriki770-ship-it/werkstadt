@@ -1,0 +1,385 @@
+/* =============================================================================
+   werkstadt — globe.css
+   Chrome only, for globe.html. The planet itself is WebGL and owns every pixel
+   inside #globe; this file styles the type that floats over it.
+
+   Same tokens and the same two typefaces as world.css and styles.css, and the
+   same rule: there are no panels here. A click opens a caption — type on the
+   picture with an ink shadow under it — and never a card, a sidebar or a box
+   with a border. Sections below are named exactly like the data-sid blocks in
+   globe.html.
+
+   Copied, not imported, for world.css's own reason: that file is the island's
+   chrome and is edited on its own schedule, and the planet must not change
+   colour because it did.
+   ========================================================================== */
+
+
+/* =============================================================================
+   TOKENS — three hues, and gold is the only accent
+   ========================================================================== */
+:root {
+  --ink:      #0a0910;
+  --bone:     #e9e1d2;
+  --bone-dim: #8d857a;
+  --gold:     #d2a62c;
+  --cool:     #6fa8b8;
+
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Mono",
+          "DejaVu Sans Mono", monospace;
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --ease: cubic-bezier(.22, .61, .36, 1);
+
+  /* One ink shadow, used by every piece of type that sits on the planet. It is
+     what replaces a background box: legibility without a panel. */
+  --on-map: 0 1px 3px rgba(6,5,10,.94), 0 0 14px rgba(6,5,10,.72);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--mono);
+  font-weight: 300;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+
+
+/* =============================================================================
+   PLANET — the WebGL canvas, and the vignette over it
+   The vignette is CSS and costs nothing per frame, where a post-process pass
+   costs a full-screen draw. On a planet in space it does a second job the
+   island's did not: a true black in the corners is what tells the eye the frame
+   continues past the light, which is most of what "space" reads as.
+   ========================================================================== */
+#globe {
+  position: fixed; inset: 0;
+  background: #05040a;
+}
+/* touch-action: none, and it is the ONE line that makes the phone gestures
+   possible at all. A browser decides what a two-finger gesture means before it
+   dispatches a single touchmove, and its answer on a full-bleed canvas is "zoom
+   the page" — preventDefault() inside the listener is already too late, so a
+   pinch scaled the DOCUMENT and the planet never moved. See GLOBE-TOUCH-DOC in
+   globe.js for the five gestures this hands over. */
+#map { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+#map.dragging { cursor: grabbing; }
+#globe::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(118% 96% at 50% 50%, transparent 34%, rgba(5,4,10,.20) 62%,
+                    rgba(3,2,7,.52) 84%, rgba(1,1,4,.86) 100%),
+    /* The top scrim carries the masthead, and it was written against a night
+       sky. The realism pass gave this planet a real DAYLIT sky from a village
+       street — a pale blue that the counts line, which is bone-dim over a text
+       shadow, disappears into. .42 -> .58 at the very top is the smallest thing
+       that keeps the words readable over both, and it is still transparent by
+       30 % down, so it never touches the planet. */
+    linear-gradient(to bottom, rgba(6,5,10,.58) 0%, rgba(6,5,10,.34) 9%,
+                               rgba(6,5,10,.15) 18%, transparent 30%),
+    linear-gradient(to top,    rgba(6,5,10,.52) 0%, transparent 24%);
+}
+
+
+/* =============================================================================
+   MASTHEAD — the word World, the real counts, and the wall clock
+   ========================================================================== */
+#masthead {
+  position: fixed; top: 34px; left: 40px;
+  max-width: 64vw;
+  pointer-events: none;
+  text-shadow: var(--on-map);
+  animation: rise-in 1.1s var(--ease) both .15s;
+}
+#globe-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(30px, 3.6vw, 52px);
+  line-height: 1.02;
+  letter-spacing: .004em;
+}
+/* THE RECORDINGS LINK. Mono, small, beside the serif title — a label on the
+   title, not a second title. #masthead is pointer-events:none so a drag
+   anywhere over it still turns the planet; this one element takes them back
+   for itself. Same rule world.css gives its `globe` link. */
+.mast-link {
+  pointer-events: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: .08em;
+  vertical-align: middle;
+  margin-left: .45em;
+  color: var(--bone-dim);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(233, 225, 210, .28);
+  padding-bottom: 1px;
+}
+.mast-link:hover, .mast-link:focus-visible { color: var(--gold); }
+/* The counts line is the only place numbers appear outside a caption, and every
+   one of them is a count of something that actually happened. */
+#globe-counts {
+  margin: .45em 0 0;
+  font-size: 13px;
+  letter-spacing: .02em;
+  color: var(--bone-dim);
+}
+#globe-counts b { font-weight: 500; color: var(--bone); }
+#globe-counts .alive { color: var(--gold); }
+#globe-clock {
+  margin: .5em 0 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .12em;
+  color: var(--bone-dim);
+}
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { #masthead { animation: none; } }
+
+
+/* =============================================================================
+   HOVER — one line that follows the cursor
+   ========================================================================== */
+#hover {
+  position: fixed; z-index: 4;
+  pointer-events: none;
+  font-size: 12.5px;
+  letter-spacing: .015em;
+  color: var(--bone);
+  text-shadow: var(--on-map);
+  max-width: 44ch;
+}
+
+
+/* =============================================================================
+   CAPTION — the clicked settlement, in plain words
+   Bottom-left, above the seal. No border and no background: the ink shadow is
+   the whole of its legibility, the same as every other piece of type here.
+   ========================================================================== */
+#caption {
+  position: fixed; left: 40px; bottom: 68px;
+  max-width: min(46ch, 44vw);
+  z-index: 4;
+  text-shadow: var(--on-map);
+  animation: rise-in .5s var(--ease) both;
+}
+#cap-name {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 27px;
+  line-height: 1.1;
+}
+#cap-path {
+  margin: .35em 0 0;
+  font-size: 11px;
+  color: var(--bone-dim);
+  word-break: break-all;
+}
+#cap-state { margin: .7em 0 0; font-size: 12.5px; line-height: 1.55; }
+#cap-agents, #cap-open {
+  margin: .55em 0 0; padding: 0; list-style: none;
+  font-size: 12px; line-height: 1.5;
+}
+#cap-agents li { color: var(--gold); }
+#cap-agents li::before, #cap-open li::before {
+  content: "· "; color: var(--bone-dim);
+}
+#cap-open li { color: var(--bone-dim); }
+#cap-hint { margin: .8em 0 0; font-size: 11px; color: var(--cool); letter-spacing: .04em; }
+
+
+/* =============================================================================
+   SEARCH — an underline, not a box
+   ========================================================================== */
+#search {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, 76vw);
+  z-index: 6;
+  text-shadow: var(--on-map);
+}
+#search-input {
+  width: 100%;
+  background: none; border: 0;
+  border-bottom: 1px solid rgba(233,225,210,.34);
+  color: var(--bone);
+  font-family: var(--mono); font-size: 22px; font-weight: 300;
+  padding: .3em 0;
+  outline: none;
+}
+#search-input::placeholder { color: rgba(141,133,122,.7); }
+#search-input:focus { border-bottom-color: var(--gold); }
+#search-hits {
+  margin: .7em 0 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  min-height: 1.4em;
+}
+
+
+/* =============================================================================
+   QUALITY + HINTS + FAULT
+   ========================================================================== */
+#quality {
+  position: fixed; top: 34px; right: 40px;
+  font-size: 12px; letter-spacing: .04em;
+  color: var(--bone-dim); text-shadow: var(--on-map);
+  z-index: 4;
+}
+/* FREE-FLY HUD. Same weight as the hints — a caption, not a panel — and it
+   sits above them, because the hints card owns the bottom centre for its first
+   nine seconds and the two would print on top of each other. */
+#free-hud {
+  position: fixed; left: 0; right: 0; bottom: 78px;
+  text-align: center;
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--gold); text-shadow: var(--on-map);
+  pointer-events: none; z-index: 4;
+  animation: rise-in .5s var(--ease) both;
+}
+#free-hud[hidden] { display: none; }
+
+#hints {
+  position: fixed; bottom: 26px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11.5px; color: var(--bone-dim);
+  text-shadow: var(--on-map);
+  z-index: 4;
+  animation: rise-in .8s var(--ease) both .6s;
+}
+#hints p { margin: 0; }
+/* Two lines in the markup, exactly one of them ever drawn: the desktop's
+   keyboard line by default, the phone's gesture line under body.mobile. */
+#hints .hint-touch { display: none; }
+body.mobile #hints .hint-keys { display: none; }
+body.mobile #hints .hint-touch { display: block; }
+body.mobile #hints b { color: var(--gold); font-weight: 500; }
+#hints kbd {
+  font: inherit; color: var(--bone);
+  border-bottom: 1px solid rgba(233,225,210,.3);
+  padding: 0 .15em;
+}
+#fault {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 62ch; text-align: center;
+  font-size: 13px; line-height: 1.7;
+  color: var(--bone); text-shadow: var(--on-map);
+  z-index: 7;
+}
+#fault code {
+  display: block; margin-top: .8em;
+  font-size: 11.5px; color: var(--gold);
+  word-break: break-all;
+}
+
+/* The kiosk hides everything a person would have to be there to use. */
+body.screensaver #hints,
+body.screensaver #quality,
+body.screensaver #hover { display: none !important; }
+
+/* THE DESKTOP WALLPAPER (`?wallpaper=1`, body.wallpaper — see globe.js).
+   Everything body.screensaver hides is hidden here too, because `wallpaper=1`
+   turns SCREENSAVER on as well. The one extra thing to go is the masthead: it
+   sits in the top-left corner, which on a desktop is exactly where the icons
+   are, so a permanent title block there reads as clutter behind the icons
+   rather than as a caption. The caption, the search box and the fault message
+   all stay — they are the parts a click can still reach through Lively's
+   mouse forwarding, and the fault line is the only way the desktop can say
+   "the server is not answering". */
+body.wallpaper #masthead { display: none !important; }
+
+
+/* =============================================================================
+   NARROW SCREENS — the planet is the picture; the chrome gets out of its way
+   ========================================================================== */
+@media (max-width: 720px) {
+  #masthead { top: 20px; left: 20px; max-width: 78vw; }
+  #caption { left: 20px; right: 20px; bottom: 56px; max-width: none; }
+  #hints { display: none; }
+}
+
+
+/* =============================================================================
+   THE PHONE — body.mobile, set by ?mobile=1 or by `pointer: coarse`
+
+   The hints are the only piece of chrome that has to CHANGE rather than move.
+   On a desktop they are one centred line of keyboard shortcuts; on a phone
+   there is no keyboard and the gestures are the thing worth naming, so they
+   become a bottom sheet: full width, against the bottom edge where a thumb
+   already is, with enough ground under the text to read it over a lit planet.
+   `display: none` from the narrow-screen block above is overridden here on
+   purpose — a phone that cannot be told how to pinch is a phone that drags.
+   ========================================================================== */
+body.mobile #hints {
+  display: block;
+  left: 0; right: 0; bottom: 0;
+  transform: none;
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+  font-size: 12.5px; line-height: 1.65;
+  text-align: center;
+  color: var(--bone);
+  /* A wash, not a card: the planet keeps going under it. The gradient is what
+     lets white text sit over a lit continent without a border round it. */
+  background: linear-gradient(to top, rgba(6,5,10,.92), rgba(6,5,10,.72) 62%, rgba(6,5,10,0));
+  text-shadow: none;
+  z-index: 6;
+  /* THE SHEET IS TEXT, NOT A CONTROL, and on a phone it lies over the bottom
+     sixth of the planet. Without this it eats every tap that lands there — a
+     town near the bottom edge could not be selected at all, which the touch
+     emulation run found by tapping the one settlement the camera had framed. */
+  pointer-events: none;
+}
+/* The masthead's counts line wraps to three lines at 390 px and covers a
+   quarter of the planet; the clock is the line a phone can spare. */
+body.mobile #globe-clock { display: none; }
+body.mobile #masthead { top: 14px; left: 14px; max-width: 86vw; }
+/* THE CAPTION IS A PANEL ON A PHONE, and it is the one place this page's own
+   "no background, the ink shadow is the whole legibility" rule has to bend.
+   A 44 vw column on a desktop sits over the dark edge of the frame; the same
+   words on a 390 px screen run across the middle of a lit village, and the
+   first emulated capture had a project's open-items list unreadable over a
+   town square. So: a wash behind it, the same one the sheet uses, and a height
+   it cannot grow past — a caption taller than half the screen has stopped
+   being a caption. Above the sheet, because a thumb is at the bottom edge. */
+body.mobile #caption {
+  bottom: 92px; left: 0; right: 0;
+  max-width: none;
+  padding: 14px 18px 16px;
+  max-height: 42dvh; overflow: hidden;
+  background: linear-gradient(to top, rgba(6,5,10,.94) 62%, rgba(6,5,10,0));
+  text-shadow: none;
+  /* TESTS.md levelup B13: the caption is TEXT, not a control (no link or
+     button lives inside #caption — see globe.html) — same reasoning as the
+     hints sheet above it. Without this, a single tap opens the caption over
+     the very settlement it just named, and the second tap of the phone's own
+     double-tap gesture lands on the caption instead of the canvas and never
+     reaches enter(). */
+  pointer-events: none;
+}
+body.mobile #cap-name { font-size: 22px; }
+/* Three of them, not eleven. The list is a sample of what is open in that
+   project, and on a phone the eleventh line is what pushes the first one off. */
+body.mobile #cap-open li:nth-child(n+4),
+body.mobile #cap-agents li:nth-child(n+4) { display: none; }
+/* The counts line wraps to three lines at 390 px and takes the top fifth of
+   the planet with it. */
+body.mobile #globe-counts { font-size: 10.5px; line-height: 1.5; }
+/* Nothing hovers on a phone; the hover line would be a tooltip under a finger
+   that is covering the thing it describes. */
+body.mobile #hover { display: none !important; }

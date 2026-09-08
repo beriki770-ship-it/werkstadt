@@ -1,0 +1,51 @@
+{
+  "_comment": [
+    "Werkstadt configuration. On first run server.py copies this file to",
+    "config.json (which is gitignored) and reads that. Edit config.json, not",
+    "this file — this one is the shipped default and git will keep overwriting",
+    "your changes to it.",
+    "",
+    "Every path may use ~ for your home directory and either slash on Windows.",
+    "An empty string means 'not set': the feature it belongs to switches off",
+    "rather than guessing a path."
+  ],
+
+  "_comment_transcripts_root": "Where Claude Code writes its session JSONL files. This is the only thing Werkstadt reads from outside its own folder, and it reads it read-only.",
+  "transcripts_root": "~/.claude/projects",
+
+  "_comment_vault": "OPTIONAL. An Obsidian vault to draw as the island's geography on world.html. Leave it \"\" and the vault layer switches off entirely: the globe and the island still run, they just have no land made of notes.",
+  "vault": "",
+
+  "_comment_host": "The interface the server binds. 127.0.0.1 means nothing outside this machine can reach it — that is the default on purpose, because your transcripts are behind it. Change it only if you know why.",
+  "host": "127.0.0.1",
+  "port": 4949,
+
+  "_comment_auth_secrets": "OPTIONAL. A JSON file with {\"user\": \"...\", \"password\": \"...\"} that turns on HTTP Basic Auth for every non-loopback client. Only needed if you deliberately serve this beyond 127.0.0.1 (e.g. over a private VPN, to a phone). Leave it \"\" for the default data/auth.json, which is absent, which means auth is off.",
+  "auth_secrets": "",
+
+  "_comment_recordings_dir": "Where finished session films are written. Relative paths are relative to the Werkstadt folder.",
+  "recordings_dir": "recordings",
+
+  "_comment_trades": "The keyword table that decides what a project's landmark building looks like. It lives in its own file because it is the thing most worth editing: config/trades.json is a plain, commented, editable list of regex -> schema.org type.",
+  "trades_file": "config/trades.json",
+
+  "_comment_project_names": "Display-name overrides, keyed by the project's directory name. Use it when a folder name is not what you want written on the town: {\"acme-web-v2\": \"Acme\"}.",
+  "project_names": {},
+
+  "_comment_excluded_dirs": "Directories that are NOT projects even though they look like one — a scratch folder, an inbox, the place you happen to launch Claude Code from. Absolute paths, matched case-insensitively. Their subdirectories are unaffected.",
+  "excluded_dirs": [],
+
+  "_comment_continents": "How a project's path decides which continent of the planet it lands on (globe.html). Rules are tried in order; the first whose `path_contains` appears in the project's lowercased path wins. Anything under your home directory that matches no rule lands on `frontier`; anything outside it becomes an offshore island. Continent keys must be one of: wdm, wild, tools, knowledge, frontier.",
+  "continents": [
+    { "path_contains": "/projects/", "continent": "wdm" },
+    { "path_contains": "/.claude/", "continent": "tools" },
+    { "path_contains": "/tools/", "continent": "tools" },
+    { "path_contains": "/infra/", "continent": "tools" }
+  ],
+
+  "_comment_aviary": "OPTIONAL. A regular expression, matched case-insensitively against a project's path and name. Every project it matches gets a small flock of parrots over its rooftops on the island and the planet. Empty (the default) means no bird anywhere. Example: \"parrot|birds|aviary\".",
+  "aviary_projects": "",
+
+  "_comment_redact": "When true, every project name, session title, file path, task tag and agent label is replaced with a stable pseudonym (town-3f9a, session-7c21, dir-04ab/file-9e12.css) before it leaves the server, so you can record, present or run the wallpaper without your directory tree on screen. Prompt and message text is dropped rather than pseudonymised, file contents and page previews are replaced by a notice, and project favicons and Obsidian note titles are not served at all. The world keeps its shape: same towns, same continents, same streets, same buildings. `python server.py --redact` turns it on for one run without editing this file. Two things stop working while it is on: `aviary_projects` (it matches names that no longer exist) and any film recorded BEFORE you turned redaction on (its filename is a real session title, so it is left off the shelf).",
+  "redact": false
+}

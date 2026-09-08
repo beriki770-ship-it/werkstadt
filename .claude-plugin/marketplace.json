@@ -1,0 +1,19 @@
+{
+  "name": "werkstadt",
+  "description": "The Werkstadt plugin: open the live 3D world of your Claude Code sessions.",
+  "owner": {
+    "name": "Wild Digital Moments",
+    "url": "https://digital.wildmoments.at/"
+  },
+  "plugins": [
+    {
+      "name": "werkstadt",
+      "source": "./plugin",
+      "description": "Open the live 3D world of your Claude Code sessions - a planet of projects, an island, and one session as a city.",
+      "version": "1.0.0",
+      "author": { "name": "Wild Digital Moments" },
+      "homepage": "https://digital.wildmoments.at/werkstadt/",
+      "keywords": ["visualization", "3d", "sessions", "transcripts", "local"]
+    }
+  ]
+}

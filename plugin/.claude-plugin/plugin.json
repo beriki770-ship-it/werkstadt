@@ -1,0 +1,13 @@
+{
+  "name": "werkstadt",
+  "displayName": "Werkstadt",
+  "version": "1.0.0",
+  "description": "Open the live 3D world of your Claude Code sessions: a planet of projects, an island, and one session as a city. Runs entirely on your own machine.",
+  "author": {
+    "name": "Wild Digital Moments",
+    "url": "https://digital.wildmoments.at/"
+  },
+  "homepage": "https://digital.wildmoments.at/werkstadt/",
+  "license": "Apache-2.0",
+  "keywords": ["visualization", "3d", "sessions", "transcripts", "local"]
+}

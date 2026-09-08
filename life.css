@@ -1,0 +1,180 @@
+/* =========================================================================
+   life.css — the showcase chrome for life.html
+   Everything here is the overlay AROUND the canvas. The scene itself is
+   life.js; nothing in this file can change what the world looks like.
+   Same type, same palette and the same fixed-corner layout as buildings.css,
+   so the two showcase pages read as one set.
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   TOKENS
+   Four colours and two families. The ink is the same near-black the canvas
+   fogs to, so a panel never announces itself as a separate rectangle.
+   ------------------------------------------------------------------------- */
+:root {
+  --ink: #0e0d12;
+  --paper: #efeae0;
+  --dim: #8a8578;
+  --gold: #d2a62c;
+  --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  overflow: hidden;
+}
+
+/* -------------------------------------------------------------------------
+   STAGE — the canvas fills the window; every panel floats over it
+   ------------------------------------------------------------------------- */
+#stage { position: fixed; inset: 0; }
+#street { display: block; width: 100%; height: 100%; }
+
+/* -------------------------------------------------------------------------
+   PANELS — masthead, readout, legend, keys
+   One shared shape: no border, no card, no shadow. The backdrop blur is what
+   keeps 12px mono legible over a bright pavement without painting a box.
+   ------------------------------------------------------------------------- */
+#masthead, #readout, #legend, #keys {
+  position: fixed;
+  z-index: 3;
+  padding: 0.85rem 1.05rem;
+  background: rgba(14, 13, 18, 0.52);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  font-size: 12px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  max-width: 30ch;
+}
+
+#masthead { top: 0; left: 0; }
+#readout  { top: 0; right: 0; text-align: right; font-variant-numeric: tabular-nums; }
+#legend   { bottom: 0; left: 0; max-width: 44ch; }
+#keys     { bottom: 0; right: 0; text-align: right; }
+
+#masthead h1 {
+  margin: 0 0 0.3rem;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 2.1rem;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+
+#masthead p, #legend p, #keys p, #readout p { margin: 0; color: var(--dim); }
+#masthead b, #legend b { color: var(--paper); font-weight: 500; }
+#readout b { color: var(--gold); font-weight: 500; font-size: 15px; }
+
+/* The keys, set as real keycaps so the control list is scannable rather than
+   read. Inline-block and not a table: there are six of them. */
+kbd {
+  display: inline-block;
+  margin-right: 0.35em;
+  padding: 0.05em 0.4em;
+  border: 1px solid rgba(239, 234, 224, 0.28);
+  border-radius: 2px;
+  color: var(--paper);
+  font: inherit;
+  font-size: 11px;
+}
+
+/* -------------------------------------------------------------------------
+   BOOT — the only thing on screen while the pack loads and the clips bake
+   The bake is CPU work on twenty animation clips, so this state lasts a real
+   second or two and has to say what it is doing rather than spin.
+   ------------------------------------------------------------------------- */
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  transition: opacity 0.6s ease;
+}
+#boot p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+#boot.gone { opacity: 0; pointer-events: none; }
+
+/* -------------------------------------------------------------------------
+   ACCESSIBILITY — the canvas is aria-hidden, so the live region is the only
+   thing a screen reader gets. It has to carry the actual state.
+   ------------------------------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  #legend { display: none; }
+  #masthead h1 { font-size: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #boot { transition: none; }
+}
+
+/* -------------------------------------------------------------------------
+   THE CONTROL CHIPS — the keycaps are buttons now
+   They looked like buttons and did nothing when they were clicked, which is
+   the worst thing a control can be. The LOOK is deliberately unchanged — same
+   keycap, same colour, same 11-12px mono — and only the things a button needs
+   are added: a target big enough to hit (44px of line box, which is what the
+   0.55rem of vertical padding buys on top of the 11px cap), a hover and a
+   focus ring, and a pressed state for the two that are a mode.
+   `pointer-events` is re-enabled per chip because the panel around them is
+   deliberately click-through: the street behind it is the thing being looked
+   at, and a 44ch invisible panel swallowing drags in the corner was worse
+   than the dead chips.
+   ------------------------------------------------------------------------- */
+#keys .chip {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  margin: 0.18rem 0 0.18rem 0.1rem;
+  padding: 0.5rem 0.42rem 0.5rem 0.1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+#keys .chip:hover kbd,
+#keys .chip:focus-visible kbd { border-color: var(--gold); color: var(--gold); }
+#keys .chip:hover { color: var(--paper); }
+#keys .chip:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+/* The mode pair. `aria-pressed` is the state a screen reader reads and the
+   state the click test asserts, so the paint is driven off it and not off a
+   second class that could disagree with it. */
+#keys .chip[aria-pressed="true"] { color: var(--paper); }
+#keys .chip[aria-pressed="true"] kbd {
+  color: var(--ink, #12111a);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+@media (prefers-reduced-motion: reduce) {
+  #keys .chip { transition: none; }
+}

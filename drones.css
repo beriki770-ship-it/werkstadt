@@ -1,0 +1,156 @@
+/* =============================================================================
+   drones.css — the showcase page's chrome only
+   The page is a 3D canvas with a caption on it. Everything a visitor reads is
+   in this file; everything a visitor looks at is in drones.js.
+   Deliberately the same tokens and the same five panels as buildings.css: the
+   two showcases are read side by side, and a second visual language between
+   them would be noise pretending to be design.
+   ========================================================================== */
+
+/* --- BASE ------------------------------------------------------------------
+   Dusk ink, so the canvas never flashes white before the renderer's first
+   frame — a white flash on a dark 3D page reads as a broken load. */
+:root {
+  --ink:   #0e0d12;
+  --paper: #e8e2d6;
+  --dim:   #9a9284;
+  --gold:  #d2a62c;
+  --mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --serif: 'Instrument Serif', Georgia, serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper); }
+body { font-family: var(--mono); overflow: hidden; }
+
+/* --- STAGE — the canvas fills the window ---------------------------------- */
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+
+/* --- MASTHEAD — title and what is on screen, top left --------------------- */
+#masthead {
+  position: fixed; top: 0; left: 0; padding: 1.4rem 1.6rem;
+  pointer-events: none; text-shadow: 0 2px 14px rgba(0, 0, 0, .85);
+}
+#masthead h1 {
+  margin: 0; font-family: var(--serif); font-weight: 400;
+  font-size: clamp(1.7rem, 3.4vw, 2.6rem); letter-spacing: .01em;
+}
+#masthead p { margin: .35rem 0 0; font-size: .74rem; color: var(--dim); line-height: 1.55; }
+#masthead b { color: var(--gold); font-weight: 500; }
+
+/* --- LEGEND — which craft is which, bottom left ---------------------------
+   Seven variants is more than a reader will guess from a screenshot, and the
+   whole claim of this module is that they ARE distinguishable — so the page
+   names them and lets the reader check the claim against the picture.
+   Each row carries its accent as a swatch, because the swatch is the second
+   channel after the silhouette and it should be visible in the caption too. */
+#legend {
+  position: fixed; left: 1.6rem; bottom: 3.6rem; max-width: 26rem;
+  font-size: .68rem; color: var(--dim); line-height: 1.75; pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .9);
+}
+#legend b { color: var(--paper); font-weight: 500; }
+#legend i {
+  display: inline-block; width: .52rem; height: .52rem; border-radius: 50%;
+  margin-right: .42rem; vertical-align: baseline;
+}
+
+/* --- KEYS — the controls, bottom right ------------------------------------ */
+#keys {
+  position: fixed; right: 1.6rem; bottom: 1.4rem; text-align: right;
+  font-size: .68rem; color: var(--dim); line-height: 1.8; pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .9);
+}
+#keys kbd {
+  font: inherit; color: var(--gold); border: 1px solid rgba(210, 166, 44, .38);
+  border-radius: 3px; padding: 0 .32rem; margin-right: .3rem;
+}
+
+/* --- READOUT — frame rate and draw calls, top right -----------------------
+   Printed on the page and not only in the console, because the performance
+   claim in docs/DRONES.md has to be checkable by looking. */
+#readout {
+  position: fixed; top: 1.4rem; right: 1.6rem; text-align: right;
+  font-size: .7rem; color: var(--dim); line-height: 1.7; pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .9);
+}
+#readout b { color: var(--gold); font-weight: 500; }
+
+/* --- TAGS — the craft captions, drawn over the canvas ---------------------
+   HTML and not sprites: seven captions are seven more draw calls and seven
+   more canvas textures for text a browser already renders better than WebGL
+   does. They are positioned from the craft's tagAnchor every frame, which is
+   exactly what a host integrating the kit will do with its own labels.
+   `translate(-50%,-100%)` puts the anchor at the caption's bottom-centre, so a
+   tag sits ON the craft rather than beside it. */
+#tags { position: fixed; inset: 0; pointer-events: none; }
+#tags .tag {
+  position: absolute; transform: translate(-50%, -100%);
+  font-size: .64rem; letter-spacing: .02em; white-space: nowrap;
+  color: var(--paper); text-shadow: 0 1px 8px #000, 0 0 22px rgba(0, 0, 0, .9);
+  padding-bottom: .35rem;
+}
+
+/* --- LOADING ------------------------------------------------------------- */
+#boot {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: var(--ink); color: var(--dim); font-size: .8rem;
+  transition: opacity .6s ease;
+}
+#boot[hidden] { display: none; }
+#boot.gone { opacity: 0; pointer-events: none; }
+
+/* --- ACCESSIBILITY -------------------------------------------------------- */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) { #boot { transition: none; } }
+
+/* -------------------------------------------------------------------------
+   THE CONTROL CHIPS — the keycaps are buttons now
+   They looked like buttons and did nothing when they were clicked, which is
+   the worst thing a control can be. The LOOK is deliberately unchanged — same
+   keycap, same colour, same 11-12px mono — and only the things a button needs
+   are added: a target big enough to hit (44px of line box, which is what the
+   0.55rem of vertical padding buys on top of the 11px cap), a hover and a
+   focus ring, and a pressed state for the two that are a mode.
+   `pointer-events` is re-enabled per chip because the panel around them is
+   deliberately click-through: the street behind it is the thing being looked
+   at, and a 44ch invisible panel swallowing drags in the corner was worse
+   than the dead chips.
+   ------------------------------------------------------------------------- */
+#keys .chip {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  margin: 0.18rem 0 0.18rem 0.1rem;
+  padding: 0.5rem 0.42rem 0.5rem 0.1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+#keys .chip:hover kbd,
+#keys .chip:focus-visible kbd { border-color: var(--gold); color: var(--gold); }
+#keys .chip:hover { color: var(--paper); }
+#keys .chip:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+/* The mode pair. `aria-pressed` is the state a screen reader reads and the
+   state the click test asserts, so the paint is driven off it and not off a
+   second class that could disagree with it. */
+#keys .chip[aria-pressed="true"] { color: var(--paper); }
+#keys .chip[aria-pressed="true"] kbd {
+  color: var(--ink, #12111a);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+@media (prefers-reduced-motion: reduce) {
+  #keys .chip { transition: none; }
+}

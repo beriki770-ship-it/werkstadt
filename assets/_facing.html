@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>facing probe</title>
+<!--
+  THE FACING PROBE — how `face` in life.js's catalogue is measured.
+
+  `face` is the yaw that turns a model's own front onto +Z, and getting it wrong
+  by a quarter turn drives a vehicle sideways down the carriageway. _buildRigid()
+  can catch the quarter turn (a road vehicle is longer than it is wide) but never
+  the half: a bounding box cannot tell a bonnet from a boot. So the sign is READ
+  OFF A PICTURE, and this page is the picture.
+
+  Open it on a running server and pass:
+    ?view=top      looking straight down, image-up is -Z, so +Z is DOWN the frame
+    ?view=front    from +Z: a model that faces +Z is looking at you
+    ?view=plusx    from +X: screen-right is -Z
+    ?view=minusx   from -X
+    ?only=car,bus  only these keys (the part after `model.hy.`)
+    ?px=300        cell width in CSS pixels
+
+  It renders every `model.hy.*` row in manifest.json through ONE WebGLRenderer
+  and copies each frame into its own 2D canvas — nineteen renderers is
+  nineteen WebGL contexts, which is over the browser's limit and loses the
+  oldest ones as blank white squares. The caption is the key and the model's
+  own bounding box, x/y/z, which is also where the `height` numbers in the
+  catalogue are solved from.
+-->
+<style>body{margin:0;background:#20242a;color:#cfd6de;font:13px system-ui}
+#g{display:flex;flex-wrap:wrap;gap:2px}
+figure{margin:0;text-align:center}
+figcaption{padding:3px 0;font-weight:600}</style>
+<div id="g"></div>
+<canvas id="work" width="200" height="200" style="display:none"></canvas>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const man = await (await fetch('manifest.json')).json();
+await MeshoptDecoder.ready;
+const loader = new GLTFLoader().setPath('./').setMeshoptDecoder(MeshoptDecoder);
+const keys = Object.keys(man).filter(k => k.startsWith('model.hy.'));
+const qs = new URLSearchParams(location.search);
+const mode = qs.get('view') || 'top';
+const only = qs.get('only');
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('work'), antialias: true, preserveDrawingBuffer: true });
+r.setClearColor(0x2b3038);
+for (const k of keys) {
+  if (only && !only.split(',').some(t => k.endsWith('.' + t))) continue;
+  const gltf = await new Promise((res, rej) => loader.load(man[k].path, res, undefined, rej));
+  const sc = new THREE.Scene();
+  sc.add(new THREE.AmbientLight(0xffffff, 1.2));
+  const d1 = new THREE.DirectionalLight(0xffffff, 1.5); d1.position.set(2, 5, 3); sc.add(d1);
+  const d2 = new THREE.DirectionalLight(0xffffff, 0.7); d2.position.set(-3, 2, -4); sc.add(d2);
+  const o = gltf.scene;
+  const box = new THREE.Box3().setFromObject(o);
+  const s = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  o.position.sub(c); sc.add(o);
+  const span = Math.max(s.x, s.y, s.z) * 0.58;
+  const cam = new THREE.OrthographicCamera(-span, span, span, -span, 0.1, 4000);
+  // top: looking straight down, image-up = -Z, so +Z points DOWN the picture.
+  // front: looking from +Z, so a model that faces +Z faces the camera.
+  if (mode === 'top') { cam.position.set(0, 1000, 0); cam.up.set(0, 0, -1); }
+  else if (mode === 'plusx') { cam.position.set(1000, 0, 0); cam.up.set(0, 1, 0); }
+  else if (mode === 'minusx') { cam.position.set(-1000, 0, 0); cam.up.set(0, 1, 0); }
+  else { cam.position.set(0, 0, 1000); cam.up.set(0, 1, 0); }
+  cam.lookAt(0, 0, 0);
+  r.render(sc, cam);
+  const fig = document.createElement('figure');
+  const out = document.createElement('canvas');
+  out.width = 200; out.height = 200;
+  out.style.width = (qs.get('px') || 340) + 'px'; out.style.display = 'block';
+  out.getContext('2d').drawImage(r.domElement, 0, 0);
+  fig.appendChild(out);
+  const cap = document.createElement('figcaption');
+  cap.textContent = k.replace('model.hy.', '') + ' ' +
+    s.x.toFixed(2) + '/' + s.y.toFixed(2) + '/' + s.z.toFixed(2);
+  fig.appendChild(cap);
+  document.getElementById('g').appendChild(fig);
+}
+document.title = 'facing probe ready';
+</script>

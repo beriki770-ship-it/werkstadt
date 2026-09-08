@@ -1,0 +1,666 @@
+/* =============================================================================
+   werkstadt — styles.css
+   Chrome only. The city itself is WebGL and owns every pixel inside #stage;
+   this file styles the type that floats over it and nothing else.
+   There are no panels by design: panels would turn a live picture into a
+   dashboard.
+   Sections below are named exactly like the data-sid blocks in index.html.
+   ========================================================================== */
+
+
+/* =============================================================================
+   TOKENS — the whole colour and type budget, in one place
+   Three hues total. Gold is the studio accent and marks the orchestrator.
+   Cool marks reading, ember marks writing. Nothing else gets a colour.
+   ========================================================================== */
+:root {
+  --ink:        #12100d;  /* warm near-black — not pure black, not navy */
+  --ink-lift:   #1a1712;  /* the vignette's outer edge */
+  --bone:       #e9e1d2;  /* warm off-white for primary type */
+  --bone-dim:   #8d857a;  /* secondary type; still passes on --ink */
+  --gold:       #d2a62c;  /* studio accent — orchestrator, live tallies */
+  --cool:       #6fa8b8;  /* reads, searches: cool, quiet */
+  --ember:      #e2703a;  /* writes, edits: warm, it leaves a mark */
+
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Mono",
+          "DejaVu Sans Mono", monospace;
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+
+  /* One easing curve for the whole page, so DOM motion and canvas motion agree. */
+  --ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--mono);
+  font-weight: 300;
+  overflow: hidden;             /* the field is the page; nothing scrolls */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Screen-reader-only live region. The canvas is aria-hidden, so this is the
+   only place a non-visual user is told what is happening. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+
+
+/* =============================================================================
+   FIELD — the WebGL canvas the city is rendered into
+   The background colour only shows in the split second before the first frame;
+   after that the sky dome covers it. The vignette sits ON TOP of the canvas
+   instead of behind it — that dark corner falloff is what gives the skyline the
+   tilt-shift look the brief asks for, and as CSS it costs nothing per frame
+   (a post-process vignette pass would cost a full-screen draw).
+   ========================================================================== */
+#field {
+  position: fixed; inset: 0;
+  background: #0b0a10;                 /* the deep end of the dusk sky */
+}
+#stage { display: block; width: 100%; height: 100%; }
+#field::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(132% 96% at 50% 56%, transparent 44%, rgba(6,5,10,.20) 76%, rgba(4,3,8,.52) 100%),
+    /* Scrims, not bars: the title and the ticker need a floor of contrast when
+       the camera swings a bright horizon behind them. The top one carries more
+       weight than the bottom because the sky now has a real dusk band in it —
+       against that, the tally captions measured under 2:1 and disappeared. */
+    linear-gradient(to bottom, rgba(8,7,12,.72) 0%, rgba(8,7,12,.44) 12%,
+                               rgba(8,7,12,.20) 24%, transparent 34%),
+    linear-gradient(to top,    rgba(8,7,12,.6) 0%, transparent 26%);
+}
+
+
+/* =============================================================================
+   MASTHEAD — session title and elapsed clock, top-left
+   ========================================================================== */
+/* An ink shadow under the type, the same trick the canvas labels use and for
+   the same reason: the sky now carries a real dusk band, and against the bright
+   part of it the small uppercase captions measured under 2:1 and vanished. A
+   heavier scrim would have worked too, and would have flattened the sky it was
+   protecting the text from. */
+#masthead, #tallies { text-shadow: 0 1px 3px rgba(8,7,12,.9), 0 0 10px rgba(8,7,12,.6); }
+
+#masthead {
+  position: fixed; top: 34px; left: 40px;
+  /* Wide enough for a 70-character prompt line at 13px mono before the ellipsis,
+     and still clear of the tallies in the opposite corner. */
+  max-width: 46vw;
+  pointer-events: none;
+  animation: rise-in 1.1s var(--ease) both .15s;
+}
+/* One line, always. Wrapped to three lines this heading owned a quarter of the
+   frame and the city was the thing behind it; clipped, it is a nameplate. */
+#session-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(26px, 3.1vw, 44px);
+  line-height: 1.06;
+  letter-spacing: .004em;
+  color: var(--bone);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The prompt in the code font, quiet: it is the session's caption, not its name. */
+#session-prompt {
+  margin: .5em 0 0;
+  font-size: 13px;
+  line-height: 1.3;
+  letter-spacing: .01em;
+  color: var(--bone);
+  opacity: .6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#session-meta {
+  margin: .55em 0 0;
+  font-size: 12px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+#clock {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+/* #masthead itself is pointer-events:none so the skyline stays clickable
+   underneath it; this is the one link inside it, so it opts back in. No box —
+   a single mono word, same treatment as a keyboard hint in #hints below. */
+#live-link {
+  pointer-events: auto;
+  color: var(--bone-dim);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(233,225,210,.28);
+  padding-bottom: 1px;
+}
+#live-link:hover, #live-link:focus-visible { color: var(--gold); }
+#live-link[hidden] { display: none; }
+
+
+/* =============================================================================
+   TALLIES — running counts of files, tool calls and agents, top-right
+   Typographic only: big numeral, small caption under it, no rules, no boxes.
+   ========================================================================== */
+#tallies {
+  position: fixed; top: 38px; right: 40px;
+  text-align: right;
+  pointer-events: none;
+  animation: rise-in 1.1s var(--ease) both .35s;
+}
+#tallies p { margin: 0 0 14px; line-height: 1; }
+#tallies b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 34px;
+  color: var(--bone);
+  font-variant-numeric: tabular-nums;
+  /* A tally that just changed flashes gold, then decays back. See replay.js. */
+  transition: color .12s linear;
+}
+#tallies b.bump { color: var(--gold); transition: none; }
+#tallies span {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+
+/* =============================================================================
+   TICKER — one line per event, newest at the bottom
+   Lines are added at the bottom and pushed up; opacity falls with age so the
+   history reads as smoke rising off the newest event.
+   ========================================================================== */
+#ticker {
+  position: fixed; left: 40px; bottom: 30px; right: 40px;
+  pointer-events: none;
+}
+/* A ground-level scrim under the ticker only: city-240.png showed the ticker's
+   own text sitting on top of the lit bottom-row buildings with nothing behind
+   it. Left 46vw only — the same width #masthead budgets itself, chosen so the
+   scrim never reaches the seal's bottom-right corner. A fixed pseudo-element
+   ignores #ticker's own left/right/bottom offsets and sizes itself against the
+   viewport directly, and it paints behind #ticker-list's real children because
+   ::before always paints first within its own box. */
+#ticker::before {
+  content: "";
+  position: fixed; left: 0; bottom: 0;
+  width: 46vw; height: 140px;
+  pointer-events: none;
+  background: linear-gradient(to top, var(--ink) 0%, transparent 100%);
+}
+#ticker-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+#ticker-list li {
+  font-size: 13px;
+  letter-spacing: .02em;
+  color: var(--bone-dim);
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  animation: ticker-in .5s var(--ease) both;
+}
+/* Age classes are set in replay.js; index 0 is the newest line. */
+#ticker-list li.age-0 { color: var(--bone); font-weight: 400; }
+#ticker-list li.age-1 { opacity: .55; }
+#ticker-list li.age-2 { opacity: .30; }
+#ticker-list li.age-3 { opacity: .15; }
+#ticker-list li.age-4 { opacity: .07; }
+
+#ticker-list .who  { color: var(--gold); }
+#ticker-list .verb { color: var(--bone-dim); }
+#ticker-list .verb.read  { color: var(--cool); }
+#ticker-list .verb.write { color: var(--ember); }
+#ticker-list .dot { margin: 0 .7em; opacity: .45; }
+
+
+/* =============================================================================
+   TRANSPORT — speed badge and the one-time keyboard hints
+   ========================================================================== */
+#speed-badge {
+  position: fixed; left: 50%; bottom: 112px;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-size: 40px;
+  color: var(--gold);
+  pointer-events: none;
+  animation: speed-flash 1.5s var(--ease) both;
+}
+#speed-badge[hidden] { display: none; }
+
+/* Centred by `left: 0; right: 0` and text-align rather than translateX(-50%):
+   the card now carries ten controls and has to be free to wrap, and a wrapped
+   line under a -50% translate is centred on the wrong box. */
+#hints {
+  position: fixed; left: 0; right: 0; bottom: 76px;
+  padding: 0 24px;
+  text-align: center; line-height: 2.1;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  pointer-events: none;
+  /* Six seconds end to end, because that is the number the help card is
+     specified in; showHints() restarts this by hand, since re-showing a hidden
+     element does not replay an animation. */
+  animation: hint-life 5.8s var(--ease) both .2s;
+}
+#hints[hidden] { display: none; }
+
+/* =============================================================================
+   FREE-FLY HUD — one line, only while the lens is off the orbit
+   Same weight as the hints: a caption, not a panel. Sits above the hints card,
+   which owns the bottom-centre for its first six seconds.
+   ========================================================================== */
+#free-hud {
+  position: fixed; left: 0; right: 0; bottom: 130px;
+  text-align: center;
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--gold);
+  pointer-events: none;
+}
+#free-hud[hidden] { display: none; }
+#hints p { margin: 0; }
+/* The second line of the card is a URL, not a key: lower case and dimmer, so it
+   reads as a footnote under the controls rather than as another shortcut. */
+#hints .hint-url { text-transform: none; letter-spacing: .04em; opacity: .62; }
+#hints .hint-url code { font: inherit; color: var(--gold); }
+#hints kbd {
+  font: inherit;
+  color: var(--bone);
+  border-bottom: 1px solid rgba(233,225,210,.28);
+  padding-bottom: 2px;
+  margin: 0 .35em 0 1.1em;
+}
+#hints kbd:first-child { margin-left: 0; }
+
+
+/* =============================================================================
+   PICK CAPTION — the name of the thing under the pointer
+   Positioned in JS from the cursor, so `left`/`top` are written per move and
+   nothing here fights them. Armed (the first click landed) turns it gold and
+   adds the one word that says what a second click will do.
+   ========================================================================== */
+#pick-caption {
+  position: fixed; z-index: 3;
+  pointer-events: none;
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--bone);
+  background: rgba(10,9,14,.78);
+  padding: 5px 9px;
+  border-left: 2px solid rgba(233,225,210,.35);
+  max-width: 46ch;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#pick-caption[hidden] { display: none; }
+#pick-caption.armed { color: var(--gold); border-left-color: var(--gold); }
+#pick-caption.armed::after { content: " — click again to enter"; color: var(--bone-dim); }
+
+
+/* =============================================================================
+   INTERIOR CSS3D LAYER — the live page hung on a ground-floor wall
+   A CSS3DRenderer draws DOM, not WebGL, so this is a sibling of #field rather
+   than anything inside the canvas. z-index 1: above the city, below the chrome
+   at 2 and 3, because a page on a wall must never cover the HUD line that says
+   how to get out of the room. It is inert — pointer-events are off, so drag-look
+   keeps working straight through it, and interior.js display:nones the element
+   whenever the reader is not on the floor the window is cut into.
+   ========================================================================== */
+#interior-css3d {
+  position: fixed; inset: 0; z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* The iframe carries the page's own design, so the only thing said about it
+   here is that it is a window and not a browser: no border, no scrollbar, and
+   a warm ground so a page that has not painted yet is not a white flash in a
+   dusk room. The gold rule is the frame the panel it replaced drew in 3D. */
+.interior-page {
+  border: 0;
+  background: #f2ece2;
+  outline: 1px solid rgba(210, 166, 44, .75);
+  /* Held down, for the same reason the 3D panel this replaces was held to 60%:
+     a white page at full brightness is the brightest thing in a dusk room by a
+     wide margin and reads as a lamp rather than as a lit screen. This layer does
+     not go through the bloom pass at all, so the correction is a CSS filter
+     instead of a material colour — and it is mild, because the point of the
+     window is that the page looks like itself. */
+  filter: brightness(.86) saturate(.94);
+}
+
+
+/* =============================================================================
+   INTERIOR HUD — where you are inside a building, and how to leave
+   Bottom centre, above the ticker's corner rather than over it. Two lines: the
+   place, then the keys — the same treatment #hints already gives a key legend,
+   because a viewer who has just walked through a wall needs the second line.
+   ========================================================================== */
+#interior-hud {
+  position: fixed; left: 50%; bottom: 34px; z-index: 3;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  max-width: min(86vw, 70ch);
+}
+#interior-hud[hidden] { display: none; }
+#interior-hud p { margin: 0; }
+#interior-where {
+  font-size: 13px;
+  color: var(--bone);
+  background: rgba(10,9,14,.62);
+  padding: 4px 12px;
+}
+#interior-hud .keys {
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+#interior-hud kbd {
+  font: inherit;
+  color: var(--bone);
+  border-bottom: 1px solid rgba(233,225,210,.28);
+  padding-bottom: 2px;
+  margin: 0 .2em;
+}
+
+
+/* =============================================================================
+   FAULT — plain-language message when no session file loads
+   ========================================================================== */
+#fault {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(18,16,13,.92);
+  padding: 8vw;
+  text-align: center;
+}
+#fault[hidden] { display: none; }
+#fault p {
+  margin: 0; max-width: 52ch;
+  font-family: var(--display);
+  font-size: clamp(20px, 2.4vw, 30px);
+  line-height: 1.35;
+  color: var(--bone);
+}
+
+
+/* =============================================================================
+   MOTION — shared keyframes
+   Nothing arrives at full size or full opacity: everything eases up into place.
+   ========================================================================== */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ticker-in {
+  from { opacity: 0; transform: translateY(9px); }
+}
+@keyframes speed-flash {
+  0%   { opacity: 0; transform: translateX(-50%) scale(.86); }
+  18%  { opacity: 1; transform: translateX(-50%) scale(1); }
+  68%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) scale(1.04); }
+}
+@keyframes hint-life {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Someone who has asked the OS for less motion still gets the picture — the
+   city keeps its own slow drift in city.js; here we just stop the chrome. */
+@media (prefers-reduced-motion: reduce) {
+  #masthead, #tallies, #ticker-list li, #speed-badge, #hints { animation-duration: .01ms; }
+}
+
+
+/* =============================================================================
+   NARROW — a phone gets the same field, smaller type and tighter margins
+   ========================================================================== */
+@media (max-width: 720px) {
+  #masthead { top: 20px; left: 20px; max-width: 62vw; }
+  #tallies  { top: 22px; right: 20px; }
+  #tallies b { font-size: 22px; }
+  #tallies p { margin-bottom: 9px; }
+  #ticker   { left: 20px; right: 20px; bottom: 18px; }
+  #ticker-list li { font-size: 11px; }
+}
+
+
+/* =============================================================================
+   MOBILE MODE — body.mobile-mode, set by replay.js off City.isMobile()
+   (?mobile=1, or an auto-detected coarse pointer). NARROW above is a plain
+   viewport breakpoint and still applies underneath this; these rules are
+   about TOUCH, not width — a tablet at 900px wide is still a coarse pointer
+   and still needs them.
+   ========================================================================== */
+body.mobile-mode #masthead { max-width: 70vw; }
+body.mobile-mode #session-title { font-size: clamp(22px, 6vw, 34px); }
+
+/* One line: replay.js still pushes and ages five lines into the DOM exactly
+   as it does on desktop, this just stops showing the older four — a phone's
+   ticker strip has no room for five ages of history the way the corner does. */
+body.mobile-mode #ticker-list li:not(.age-0) { display: none; }
+
+/* The hints card becomes a bottom sheet — a real panel, not text floating on
+   the skyline — because a touch visitor has no hover to discover the controls
+   with and needs to be able to stop and read them. */
+body.mobile-mode #hints {
+  left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to top, rgba(10,9,14,.94) 60%, rgba(10,9,14,.8));
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  line-height: 1.9;
+}
+
+/* The play/pause glyph: bottom-right, clear of the ticker's own corner and of
+   the seal beside it. Mono, round, one glyph — a caption, not a toolbar. */
+body.mobile-mode #mobile-playpause {
+  position: fixed; z-index: 3;
+  right: 20px; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(233,225,210,.35);
+  background: rgba(10,9,14,.7);
+  color: var(--bone);
+  font: 16px var(--mono);
+  text-shadow: none;
+}
+#mobile-playpause[hidden] { display: none; }
+
+
+/* =============================================================================
+   STUDIO SEAL — placement only
+   Every other element on this page is position:fixed, which leaves the injected
+   .wdm-seal as the one item still in normal flow — so it lands at the top-left,
+   on top of the session title. Pinning it is placement, not restyling: the mark,
+   its opacity, its blend mode and its hover behaviour all stay exactly as the
+   studio-seal skill wrote them. Bottom-RIGHT here because the ticker owns the
+   bottom-left corner on this page.
+   ========================================================================== */
+.wdm-seal {
+  position: fixed;
+  right: 0; bottom: 0;
+  padding: 0 18px 14px 0;
+  z-index: 2;
+}
+
+/* =============================================================================
+   THE CONTROL CLUSTER SHARES THIS CORNER — and only on this page
+   `#controls` (controls.css) sits bottom-right on all three pages, and on the
+   globe and the island that corner is empty: both of them pin the studio seal
+   bottom-LEFT. This page is the one that does not — the ticker owns its bottom
+   left, so the seal went right, and on a phone the play/pause glyph went there
+   too. The first captures had the seal's W printing through the `enter` button
+   and the pause glyph sitting on top of it (docs/shots/controls-city-390.png,
+   first pass). So the cluster is lifted here, in this page's own stylesheet,
+   rather than teaching the shared file about one page's furniture.
+   `body #controls` and not `#controls`: styles.css is linked BEFORE
+   controls.css, so at equal specificity controls.css would win.
+   ========================================================================== */
+body #controls { bottom: 56px; }                    /* clear of the seal (ends at 42) */
+body.mobile-mode #controls { right: 76px; bottom: 14px; }  /* left of the 44px play/pause */
+
+
+/* =============================================================================
+   VAULT CITY — chrome for vault.html only
+   Appended at the end on purpose: everything above styles the session city, and
+   these rules must never reach it. Same tokens, same two faces, same rule about
+   panels — the vault city is the same product with different data in it, so the
+   only thing that is new here is the type block, and it is deliberately smaller
+   and quieter than the session city's, because a vault has no clock to report.
+   Sections are named exactly like the data-sid blocks in vault.html.
+   ========================================================================== */
+
+/* VAULT MASTHEAD — the name and the counts, top-left.
+   The same ink shadow the session city's masthead carries, and for the same
+   measured reason: the sky has a real dusk band in it, and small type over the
+   bright part of that band drops under 2:1 without it. */
+#vault-masthead {
+  position: fixed; top: 34px; left: 40px;
+  max-width: 46vw;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(8,7,12,.9), 0 0 10px rgba(8,7,12,.6);
+  animation: rise-in 1.1s var(--ease) both .15s;
+}
+#vault-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(28px, 3.4vw, 48px);
+  line-height: 1.06;
+  letter-spacing: .004em;
+  color: var(--bone);
+  white-space: nowrap;
+}
+/* The counts are the caption, not the headline: mono, small, tabular so the
+   numbers do not shuffle when a note is written while you are looking at it. */
+#vault-meta {
+  margin: .55em 0 0;
+  font-size: 13px;
+  letter-spacing: .04em;
+  color: var(--bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+/* The live marker earns its gold: it is hidden until /api/vault has actually
+   connected, so the page can never claim to be watching a vault it is not. */
+#vault-live { color: var(--gold); }
+
+/* VAULT HELP — one line, bottom-left, only when asked for with H */
+#vault-help {
+  position: fixed; left: 40px; bottom: 30px;
+  max-width: 60vw;
+  pointer-events: none;
+  animation: rise-in .5s var(--ease) both;
+}
+#vault-help p {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: .02em;
+  color: var(--bone-dim);
+  text-shadow: 0 1px 3px rgba(8,7,12,.9);
+}
+#vault-help kbd {
+  font: inherit;
+  color: var(--bone);
+  border-bottom: 1px solid rgba(233,225,210,.35);
+  padding-bottom: 1px;
+}
+
+/* On a phone the town is the whole point and the type has to give it room. */
+@media (max-width: 640px) {
+  #vault-masthead { top: 20px; left: 20px; max-width: 78vw; }
+  #vault-help { left: 20px; bottom: 22px; max-width: 88vw; }
+}
+
+
+/* =============================================================================
+   SHELF LINK — "recordings", next to the clock in the masthead
+   The same shape #live-link already has; one word, no button.
+   ========================================================================== */
+#shelf-link {
+  pointer-events: auto;
+  color: var(--bone-dim);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(233,225,210,.28);
+  padding-bottom: 1px;
+  margin-left: .5em;
+}
+#shelf-link:hover, #shelf-link:focus-visible { color: var(--gold); }
+
+
+/* =============================================================================
+   RECORD MODE — ?record=1, the page dressed as a film
+   Everything a viewer of the FILE cannot act on is dead weight in the frame:
+   the ticker scrolls text nobody can pause, the buttons cannot be clicked, and
+   a hint card offering keyboard shortcuts is a lie inside an MP4. So record
+   mode leaves the city, the vignette and the title card, and nothing else.
+   Hidden with display:none rather than opacity so nothing keeps compositing.
+   ========================================================================== */
+body.record #masthead,
+body.record #tallies,
+body.record #ticker,
+body.record #hints,
+body.record #speed-badge,
+body.record #free-hud,
+body.record #pick-caption,
+body.record #interior-hud,
+body.record #mobile-playpause,
+body.record #controls,
+body.record .wdm-seal { display: none !important; }
+
+/* The card is centred rather than cornered because it is the whole frame for
+   its four seconds — there is no city to keep out of the way of yet. */
+#record-card {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .5em;
+  padding: 0 8vw;
+  text-align: center;
+  pointer-events: none;
+  /* Not fully opaque: the skyline reading faintly through the card is what
+     tells a viewer in the first second what they are about to watch. */
+  background: radial-gradient(ellipse at center, rgba(18,16,13,.82), rgba(18,16,13,.96));
+}
+#record-card[hidden] { display: none; }
+
+#record-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(30px, 4.4vw, 66px);
+  line-height: 1.12;
+  color: var(--bone);
+  max-width: 22ch;
+}
+#record-sub, #record-end-line {
+  margin: 0;
+  font-size: clamp(13px, 1.1vw, 17px);
+  letter-spacing: .1em;
+  color: var(--bone-dim);
+}
+/* Gold is the studio accent, and the closing counts are the one number in the
+   film that is a result rather than a label. */
+#record-end-line:not(:empty) { color: var(--gold); margin-top: .8em; }

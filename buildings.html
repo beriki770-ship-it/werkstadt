@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Buildings — the procedural street, up close</title>
+<meta name="description" content="Twelve procedurally generated buildings on one cobbled street: nine styles, five palettes, four roofs, every window a real reveal with a frame, a sill, glass and a dirt streak under it.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0d12'/%3E%3Cg fill='%23d2a62c'%3E%3Crect x='6' y='14' width='8' height='12'/%3E%3Crect x='17' y='9' width='9' height='17'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="buildings.css">
+
+<!-- Three.js pinned to the same version and the same package as world.html, so
+     the two pages cannot drift onto different renderers under a screenshot. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     STAGE — the WebGL canvas the whole street lives in
+     One canvas. Twelve LOD0 buildings are about 60,000 triangles and nine draw
+     calls each; as DOM they would not exist at all.
+     ========================================================================= -->
+<section id="stage" data-sid="stage" data-title="The 3D canvas: twelve procedural buildings on a cobbled street">
+  <canvas id="street" aria-hidden="true"></canvas>
+  <p class="sr-only" id="a11y-status" role="status" aria-live="polite">Loading the street.</p>
+</section>
+
+<!-- =========================================================================
+     MASTHEAD — what the page is, top left
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Title and the one-line description of what is on screen">
+  <h1>Buildings</h1>
+  <p>Twelve buildings, nine styles, five palettes, four roofs.<br>
+     Every one grown from a seed — <b id="seed-line">seed 1</b></p>
+</header>
+
+<!-- =========================================================================
+     READOUT — frame rate and draw calls, top right
+     The performance claim in docs/BUILDINGS.md is checkable by looking here.
+     ========================================================================= -->
+<aside id="readout" data-sid="readout" data-title="Live frame rate, draw call count and triangle count">
+  <p><b id="r-fps">--</b> fps<br>
+     <b id="r-calls">--</b> draw calls<br>
+     <b id="r-tris">--</b> triangles<br>
+     <span id="r-mode">day · LOD auto</span></p>
+</aside>
+
+<!-- =========================================================================
+     LEGEND — the grammar, bottom left
+     ========================================================================= -->
+<aside id="legend" data-sid="legend" data-title="Which building on the street is which style and palette">
+  <p id="legend-body">…</p>
+</aside>
+
+<!-- =========================================================================
+     KEYS — the controls, bottom right
+     ========================================================================= -->
+<!-- Real buttons, not keycaps that ignore a click. See life.html. -->
+<nav id="keys" data-sid="keys" data-title="Mouse, keyboard and click controls for the showcase" aria-label="View controls">
+  <p><button type="button" class="chip" data-act="orbit" aria-label="Orbit mode: drag to look around"><kbd>drag</kbd>orbit</button> &nbsp; <button type="button" class="chip" data-act="zoom-in" aria-label="Zoom in"><kbd>scroll</kbd>zoom in</button> <button type="button" class="chip" data-act="zoom-out" aria-label="Zoom out"><kbd>scroll</kbd>out</button><br>
+     <button type="button" class="chip" data-act="walk" aria-label="Walk mode: keys move the camera"><kbd>W A S D</kbd>walk</button> &nbsp; <button type="button" class="chip" data-act="up" aria-label="Move the camera up"><kbd>Q</kbd>up</button> <button type="button" class="chip" data-act="down" aria-label="Move the camera down"><kbd>E</kbd>down</button><br>
+     <button type="button" class="chip" data-act="night" aria-label="Toggle day and night"><kbd>N</kbd>night</button> <button type="button" class="chip" data-act="lod" aria-label="Cycle the forced level of detail"><kbd>L</kbd>force LOD</button> <button type="button" class="chip" data-act="closeup" aria-label="Frame a building close up"><kbd>C</kbd>close-up</button></p>
+</nav>
+
+<!-- =========================================================================
+     BOOT — the only thing on screen while the pack loads
+     ========================================================================= -->
+<div id="boot" data-sid="boot" data-title="Loading state, shown until the first frame is drawn">
+  <p>loading the texture pack…</p>
+</div>
+
+<!-- =========================================================================
+     SHOWCASE SCRIPT — the street itself
+     Kept inline rather than in a fourth file: it is the page, not the library.
+     buildings.js is the reusable half and has no idea this page exists.
+     ========================================================================= -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { BuildingKit, STYLES } from './buildings.js';
+
+/* ---- the seed, from the query string ------------------------------------ */
+const params = new URLSearchParams(location.search);
+const SEED = parseInt(params.get('seed') || '1', 10) || 1;
+document.getElementById('seed-line').textContent = 'seed ' + SEED;
+
+/* ---- renderer, scene, camera -------------------------------------------- */
+const canvas = document.getElementById('street');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+/* autoReset off, reset by hand once per frame. With an EffectComposer the LAST
+   thing rendered is the output pass's fullscreen quad, so an auto-reset counter
+   read after composer.render() reports "1 draw call" for the whole street. */
+renderer.info.autoReset = false;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x2b2733, 120, 640);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.25, 2000);
+camera.position.set(-16, 6.2, 26);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(-4, 4.5, 4);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495;   // never under the ground
+controls.minDistance = 3;
+controls.maxDistance = 420;
+
+/* ---- the sun ------------------------------------------------------------
+   One directional light with a shadow camera pulled tight around the street.
+   A 2048 map over 120 m of street is ~6 cm a texel, which is fine enough for a
+   window sill to cast a readable line — the whole point of modelling the sill. */
+const sun = new THREE.DirectionalLight(0xffd8ab, 2.6);
+sun.position.set(-46, 34, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1536, 1536);
+sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -40;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 180;
+sun.shadow.bias = -0.0008;
+sun.shadow.normalBias = 0.035;
+scene.add(sun);
+const fill = new THREE.HemisphereLight(0x9fb6d8, 0x3a3128, 0.55);
+scene.add(fill);
+
+/* ---- bloom, the same shape the city uses -------------------------------- */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+/* Threshold 1.0, not 0.86. With a real HDRI sky in the background the whole
+   upper half of the frame sits above 0.86, so the bloom veiled the entire street
+   in milk. Only genuinely over-white pixels — the sun, lit windows — bloom now. */
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth * 0.4, innerHeight * 0.4), 0.20, 0.55, 1.0);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  composer.setSize(innerWidth, innerHeight);
+  bloom.setSize(Math.round(innerWidth * 0.4), Math.round(innerHeight * 0.4));
+});
+
+/* =========================================================================
+   THE STREET
+   Twelve buildings in two facing rows. Row A stands on -Z and is turned to
+   face the road; row B stands on +Z and already faces it, because a building's
+   front is its -Z side.
+   ========================================================================= */
+const STREET = [
+  { style: 'townhouse',  palette: 'plaster',   roof: 'gable',   w: 9,  d: 9,  floors: 3 },
+  { style: 'shop',       palette: 'timber',    roof: 'gable',   w: 10, d: 9,  floors: 2 },
+  { style: 'townhouse',  palette: 'brick',     roof: 'mansard', w: 8,  d: 9,  floors: 4 },
+  { style: 'cottage',    palette: 'whitewash', roof: 'hip',     w: 9,  d: 8,  floors: 1 },
+  { style: 'apartment',  palette: 'plaster',   roof: 'mansard', w: 12, d: 10, floors: 5 },
+  { style: 'civic',      palette: 'stone',     roof: 'hip',     w: 13, d: 11, floors: 2 },
+  { style: 'shop',       palette: 'whitewash', roof: 'gable',   w: 9,  d: 9,  floors: 3 },
+  { style: 'townhouse',  palette: 'timber',    roof: 'gable',   w: 8,  d: 9,  floors: 3 },
+  { style: 'barn',       palette: 'timber',    roof: 'gable',   w: 12, d: 10, floors: 1 },
+  { style: 'industrial', palette: 'brick',     roof: 'flat',    w: 14, d: 12, floors: 2 },
+  { style: 'church',     palette: 'stone',     roof: 'gable',   w: 10, d: 14, floors: 1 },
+  { style: 'tower',      palette: 'stone',     roof: 'flat',    w: 7,  d: 7,  floors: 6 },
+];
+
+const ROAD_HALF = 5.5;      // half the cobbled carriageway
+const VERGE = 3.0;          // pavement between kerb and facade
+
+let kit, buildings = [], props = new THREE.Group(), stressGroup = null;
+let night = 0, lodForce = -1, ready = false;
+/* The visible sky. The kit prefilters both HDRIs for LIGHTING, and a PMREM
+   texture cannot be used as a background — so the two raw equirectangulars are
+   loaded again here (from the browser cache) purely to be looked at. A flat
+   clear colour behind a street is the difference between a render and a shot. */
+let skyDusk = null, skyNight = null;
+
+async function boot() {
+  kit = await BuildingKit.load(renderer, 'assets/manifest.json');
+  kit.setEnvironment(kit.envDusk);
+  scene.environment = kit.envDusk;
+
+  const rgbe = new RGBELoader().setPath('assets/');
+  const sky = p => new Promise(res => rgbe.load(p, t => {
+    t.mapping = THREE.EquirectangularReflectionMapping; res(t);
+  }, undefined, () => res(null)));
+  [skyDusk, skyNight] = await Promise.all([sky(kit.manifest.hdriDusk.path), sky(kit.manifest.hdriNight.path)]);
+  scene.background = skyDusk;
+  scene.backgroundIntensity = 0.62;
+
+  await buildGround();
+  buildStreet();
+  buildStreetFurniture();
+  buildWeeds();
+  buildWires();
+  await buildProps();
+  collectLamps();
+  applyNight(0);
+
+  ready = true;
+  const b = document.getElementById('boot');
+  b.classList.add('gone');
+  setTimeout(() => { b.hidden = true; }, 700);
+  document.getElementById('a11y-status').textContent =
+    'A street of twelve procedurally generated buildings. Use W, A, S and D to walk, N for night.';
+}
+
+/* ---- ground: cobbled carriageway, gravel verges, a grass field ---------- */
+async function buildGround() {
+  const t = kit.tex;
+  const mk = (s, rep, tint) => {
+    const c = {};
+    for (const k of ['diffuse', 'normal', 'arm']) { c[k] = s[k].clone(); c[k].needsUpdate = true; c[k].repeat.set(rep, rep); }
+    return new THREE.MeshStandardMaterial({
+      map: c.diffuse, normalMap: c.normal, roughnessMap: c.arm, aoMap: c.arm,
+      color: tint, roughness: 1, metalness: 0, envMapIntensity: 0.7,
+    });
+  };
+  /* Grass, loaded here and not by the kit: the kit is a BUILDING generator and
+     has no business owning the ground. At 600 m the mip chain averages any
+     texture to a flat tone, so the tint does the work and the repeat only has to
+     keep the near ground from smearing. */
+  const grassMan = kit.manifest.grass;
+  const gl = new THREE.TextureLoader().setPath('assets/');
+  const grassTex = await new Promise(res => gl.load(grassMan.diffuse, tt => {
+    tt.wrapS = tt.wrapT = THREE.RepeatWrapping; tt.colorSpace = THREE.SRGBColorSpace;
+    tt.anisotropy = 8; tt.repeat.set(220, 220); res(tt);
+  }));
+  const field = new THREE.Mesh(new THREE.PlaneGeometry(600, 600),
+    new THREE.MeshStandardMaterial({ map: grassTex, color: 0x5c6340, roughness: 1, metalness: 0, envMapIntensity: 0.5 }));
+  field.rotation.x = -Math.PI / 2; field.position.y = -0.04; field.receiveShadow = true;
+  scene.add(field);
+
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(180, ROAD_HALF * 2), mk(t.cobble, 40, 0xa49b8e));
+  road.rotation.x = -Math.PI / 2; road.receiveShadow = true;
+  scene.add(road);
+
+  for (const s of [-1, 1]) {
+    /* Flagstones, not gravel: the pavement is the surface closest to the camera
+       in every close-up, and the gravel mip averaged to a blown-out white band. */
+    const pave = new THREE.Mesh(new THREE.BoxGeometry(180, 0.16, VERGE + 1.2), mk(t.cobble, 55, 0x55524b));
+    pave.position.set(0, 0.08, s * (ROAD_HALF + (VERGE + 1.2) / 2));
+    pave.receiveShadow = true; pave.castShadow = true;
+    scene.add(pave);
+  }
+}
+
+/* ---- kerb, gutter, drains, puddles, bollards ----------------------------
+   The road met the pavement at a hard 16 cm step. That edge is the one shape in
+   the frame a person knows by heart from every street they have walked down, so
+   getting it wrong costs more than any facade detail buys: a kerb stone with a
+   chamfered arris, a gutter channel darker and wetter than the road beside it,
+   standing water in the low spots and a drain where that water goes.
+   Everything here is merged or instanced — the whole block is eight draw calls.
+   Deterministic from SEED: the same street twice, always. */
+function buildStreetFurniture() {
+  const t = kit.tex;
+  const rnd = (() => { let a = (SEED * 7919 + 13) >>> 0; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+  const surf = (src, rep_, tint, extra = {}) => {
+    const c = {};
+    for (const k of ['diffuse', 'normal', 'arm']) { c[k] = src[k].clone(); c[k].needsUpdate = true; c[k].repeat.set(rep_, rep_); }
+    return new THREE.MeshStandardMaterial({
+      map: c.diffuse, normalMap: c.normal, roughnessMap: c.arm,
+      color: tint, roughness: 1, metalness: 0, envMapIntensity: 0.7, ...extra,
+    });
+  };
+  const furniture = new THREE.Group();
+  furniture.name = 'street-furniture';
+
+  /* --- the kerb stone. One geometry: the block, plus a 45-degree chamfer box
+     along its road-side top arris. A kerb without that chamfer catches a single
+     hard specular line and reads as a plastic extrusion. */
+  const kerbUnit = mergeGeometries([
+    new THREE.BoxGeometry(0.94, 0.36, 0.30),
+    (() => { const g = new THREE.BoxGeometry(0.94, 0.075, 0.075); g.rotateX(Math.PI / 4); g.translate(0, 0.166, -0.136); return g; })(),
+  ], false);
+  const kerbMat = surf(t.brick, 3, 0x8e8b83, { roughness: 0.92 });
+  const KERB_N = 128;
+  const kerbs = new THREE.InstancedMesh(kerbUnit, kerbMat, KERB_N * 2);
+  kerbs.castShadow = kerbs.receiveShadow = true;
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), pv = new THREE.Vector3(), sv = new THREE.Vector3(1, 1, 1);
+  let ki = 0;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < KERB_N; i++) {
+      /* 2 mm of settlement per stone, and a 1 cm joint: a perfectly level kerb
+         is the same tell as a perfectly clean wall. */
+      const x = -62 + i * 0.97;
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), side > 0 ? Math.PI : 0);
+      pv.set(x, 0.02 - rnd() * 0.012, side * (ROAD_HALF + 0.16));
+      kerbs.setMatrixAt(ki++, m4.compose(pv, q, sv));
+    }
+  }
+  kerbs.instanceMatrix.needsUpdate = true;
+  furniture.add(kerbs);
+
+  /* --- the gutter channel: the 60 cm of road next to the kerb, darker and
+     smoother, because that is where the water sits and the grit collects. */
+  const gutter = mergeGeometries([-1, 1].map(side => {
+    const g = new THREE.PlaneGeometry(124, 0.62);
+    g.rotateX(-Math.PI / 2); g.translate(0, 0.012, side * (ROAD_HALF - 0.31));
+    return g;
+  }), false);
+  furniture.add(new THREE.Mesh(gutter, surf(t.cobble, 26, 0x6d6a63, {
+    roughness: 0.55, envMapIntensity: 1.0, polygonOffset: true, polygonOffsetFactor: -1,
+  })));
+
+  /* --- standing water. Two 64 px canvases: one is the alpha (a puddle has no
+     edge, it has a wet margin), the other is the roughness map — mirror-smooth
+     in the middle, rough where it is only damp. A puddle with one flat
+     roughness reads as a hole cut in the road. */
+  const canv = (paint) => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    paint(c.getContext('2d'));
+    const tx = new THREE.CanvasTexture(c); tx.needsUpdate = true; return tx;
+  };
+  const puddleAlpha = canv(x => {
+    const g = x.createRadialGradient(32, 32, 4, 32, 32, 32);
+    g.addColorStop(0, '#fff'); g.addColorStop(0.62, '#e0e0e0'); g.addColorStop(1, '#000');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  });
+  const puddleRough = canv(x => {
+    const g = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+    /* Never darker than mid-grey. This map MULTIPLIES material.roughness, and
+       at #0a0a0a the middle of every puddle went mirror-smooth: the sun's
+       specular landed on it as a hard white oval and eleven puddles read as
+       eleven splashes of paint. Broad and dim is what wet asphalt looks like. */
+    g.addColorStop(0, '#5e5e5e'); g.addColorStop(0.55, '#7c7c7c'); g.addColorStop(1, '#e0e0e0');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(160,160,160,0.25)'; x.fillRect(Math.random() * 64, Math.random() * 64, 3, 2); }
+  });
+  const puddles = [];
+  for (let i = 0; i < 11; i++) {
+    const g = new THREE.PlaneGeometry(1, 1);
+    g.rotateX(-Math.PI / 2);
+    const side = rnd() < 0.5 ? -1 : 1;
+    /* Water runs to the kerb. Two thirds of them sit in the gutter channel and
+       the rest in the camber's low spots, which is where it actually stands. */
+    const z = i % 3 === 2 ? (rnd() - 0.5) * ROAD_HALF * 1.5 : side * (ROAD_HALF - 0.9 - rnd() * 0.5);
+    const pw = 1.4 + rnd() * 2.4, pd = 0.7 + rnd() * 1.1;
+    g.scale(pw, 1, pd);
+    g.translate(-52 + rnd() * 104, 0.017, THREE.MathUtils.clamp(z, -ROAD_HALF + pd / 2, ROAD_HALF - pd / 2));
+    puddles.push(g);
+  }
+  /* Dark and only half-reflective. The first build had roughness 0.12 and
+     envMapIntensity 1.5, which is what a mirror-flat pond does under a bright
+     HDRI sky: every puddle came back as a WHITE blob of reflected cloud and read
+     as spilt paint. Seen from above, standing water is mostly the dark road
+     underneath it — the sky only arrives at a grazing angle. */
+  furniture.add(new THREE.Mesh(mergeGeometries(puddles, false), new THREE.MeshStandardMaterial({
+    color: 0x0d1013, roughness: 0.9, metalness: 0.0, roughnessMap: puddleRough,
+    alphaMap: puddleAlpha, transparent: true, opacity: 0.42, envMapIntensity: 0.1,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3,
+  })));
+
+  /* --- drain grates in the gutter, and one manhole in the carriageway. Water
+     that has nowhere to go is the detail that makes a wet road look painted. */
+  const metal = new THREE.MeshStandardMaterial({ color: 0x2f3134, roughness: 0.55, metalness: 0.85, envMapIntensity: 1.1 });
+  const iron = [];
+  for (const [gx, side] of [[-32, -1], [-6, 1], [18, -1], [41, 1]]) {
+    const z = side * (ROAD_HALF - 0.30);
+    const frame = new THREE.BoxGeometry(0.66, 0.05, 0.44); frame.translate(gx, 0.015, z);
+    iron.push(frame);
+    for (let b = 0; b < 5; b++) {                      // the bars, and the dark between them
+      const bar = new THREE.BoxGeometry(0.60, 0.06, 0.035);
+      bar.translate(gx, 0.045, z - 0.17 + b * 0.085);
+      iron.push(bar);
+    }
+  }
+  const mh = new THREE.CylinderGeometry(0.36, 0.36, 0.06, 20); mh.translate(-14, 0.02, 0.8);
+  iron.push(mh);
+  const mhRing = new THREE.CylinderGeometry(0.42, 0.42, 0.04, 20); mhRing.translate(-14, 0.008, 0.8);
+  iron.push(mhRing);
+  furniture.add(new THREE.Mesh(mergeGeometries(iron, false), metal));
+
+  /* --- bollards: the thing that says "cars do not come up here". */
+  const boll = [];
+  for (let i = 0; i < 7; i++) {
+    const x = -44 + i * 14.5, side = i % 2 ? 1 : -1;
+    const z = side * (ROAD_HALF + 0.75);
+    const post = new THREE.CylinderGeometry(0.075, 0.09, 0.86, 10); post.translate(x, 0.6, z);
+    const cap = new THREE.SphereGeometry(0.078, 10, 6); cap.translate(x, 1.03, z);
+    boll.push(post, cap);
+  }
+  furniture.add(new THREE.Mesh(mergeGeometries(boll, false),
+    new THREE.MeshStandardMaterial({ color: 0x24262a, roughness: 0.45, metalness: 0.7, envMapIntensity: 1.0 })));
+
+  furniture.traverse(o => { if (o.isMesh) { o.receiveShadow = true; o.castShadow = o !== kerbs ? false : true; } });
+  kerbs.castShadow = true;
+  scene.add(furniture);
+}
+
+/* ---- weeds ---------------------------------------------------------------
+   Billboard cards, two crossed quads each, at the foot of every wall and along
+   the kerb joint. Nothing marks a street as generated faster than a wall that
+   meets the ground at a mathematically clean line: in the real world that joint
+   is where the seeds land. One merged geometry, one alpha-tested draw call. */
+function buildWeeds() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, 64, 64);
+  const rnd = (() => { let a = (SEED * 2654435761 + 7) >>> 0; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+  for (let i = 0; i < 26; i++) {                    // blades, splayed from the base
+    const bx = 12 + rnd() * 40, len = 22 + rnd() * 36, lean = (rnd() - 0.5) * 26;
+    x.strokeStyle = 'rgb(' + (66 + rnd() * 40 | 0) + ',' + (86 + rnd() * 46 | 0) + ',' + (38 + rnd() * 26 | 0) + ')';
+    x.lineWidth = 1.2 + rnd() * 1.8; x.lineCap = 'round';
+    x.beginPath(); x.moveTo(bx, 64); x.quadraticCurveTo(bx + lean * 0.4, 64 - len * 0.6, bx + lean, 64 - len); x.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  const cards = [];
+  const card = (px, pz, sc, rot) => {
+    for (const a of [0, Math.PI / 2]) {
+      const g = new THREE.PlaneGeometry(0.34 * sc, 0.40 * sc);
+      g.translate(0, 0.20 * sc, 0); g.rotateY(a + rot); g.translate(px, 0.16, pz);
+      cards.push(g);
+    }
+  };
+  // along both kerbs, in the joint between stone and road
+  for (let i = 0; i < 90; i++) {
+    if (rnd() < 0.45) continue;
+    card(-58 + rnd() * 116, (rnd() < 0.5 ? -1 : 1) * (ROAD_HALF + 0.33), 0.7 + rnd() * 0.8, rnd() * 3.1);
+  }
+  // and at the foot of every facade, where the pavement meets the plinth
+  for (const b of buildings) {
+    const w = b.userData.spec.w, side = b.position.z < 0 ? 1 : -1;
+    for (let i = 0; i < 7; i++) {
+      if (rnd() < 0.4) continue;
+      card(b.position.x + (rnd() - 0.5) * (w + 0.6),
+           b.position.z + side * (b.userData.spec.d / 2 + 0.22), 0.6 + rnd() * 0.9, rnd() * 3.1);
+    }
+  }
+  const mesh = new THREE.Mesh(mergeGeometries(cards, false), new THREE.MeshStandardMaterial({
+    map: tex, alphaTest: 0.42, transparent: false, side: THREE.DoubleSide,
+    roughness: 0.9, metalness: 0, color: 0xa8b48c,
+  }));
+  mesh.name = 'weeds';
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+/* ---- overhead wires ------------------------------------------------------
+   Two spans crossing the street between the tall buildings, with the catenary
+   sag a straight line would not have. A European street has cable over it; an
+   empty sky between two facades is a render decision, not an observation. */
+function buildWires() {
+  const parts = [];
+  const span = (ax, ay, az, bx, by, bz, sag) => {
+    const pts = [];
+    for (let i = 0; i <= 12; i++) {
+      const u = i / 12;
+      /* cosh is the honest curve, but 4*u*(1-u) is the same shape to within a
+         pixel over a 20 m span and costs no library. */
+      pts.push(new THREE.Vector3(ax + (bx - ax) * u, ay + (by - ay) * u - sag * 4 * u * (1 - u), az + (bz - az) * u));
+    }
+    parts.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.022, 5, false));
+    for (const [px, py, pz] of [[ax, ay, az], [bx, by, bz]]) {
+      const ins = new THREE.CylinderGeometry(0.05, 0.05, 0.22, 6); ins.translate(px, py + 0.11, pz);
+      parts.push(ins);
+    }
+  };
+  span(-27, 9.4, -ROAD_HALF - 2.6, -24, 9.0, ROAD_HALF + 2.6, 1.15);
+  span(4, 12.6, -ROAD_HALF - 2.8, 8, 11.4, ROAD_HALF + 2.8, 1.5);
+  span(-27.2, 9.2, -ROAD_HALF - 2.6, 3.8, 12.4, -ROAD_HALF - 2.8, 1.9);
+  const m = new THREE.Mesh(mergeGeometries(parts, false),
+    new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.7, metalness: 0.3 }));
+  m.name = 'wires';
+  scene.add(m);
+}
+
+/* ---- the twelve ---------------------------------------------------------- */
+function buildStreet() {
+  let xA = -34, xB = -34;
+  STREET.forEach((s, i) => {
+    const rowA = i % 2 === 0;
+    const x = rowA ? xA + s.w / 2 : xB + s.w / 2;
+    const z = rowA ? -(ROAD_HALF + VERGE + s.d / 2) : (ROAD_HALF + VERGE + s.d / 2);
+    const g = kit.make({
+      seed: SEED * 1000 + i * 37,
+      footprint: [s.w, s.d], floors: s.floors,
+      style: s.style, roof: s.roof, palette: s.palette, lod: 0,
+    });
+    g.position.set(x, 0, z);
+    g.rotation.y = rowA ? Math.PI : 0;
+    g.userData.spec = s;
+    scene.add(g);
+    buildings.push(g);
+    if (rowA) xA += s.w + 2.2; else xB += s.w + 2.2;
+  });
+
+  document.getElementById('legend-body').innerHTML =
+    STREET.map((s, i) => `<span>${i + 1}</span> ${s.style} · ${s.palette} · ${s.roof}`).join(' &nbsp; ');
+}
+
+/* ---- props from the pack ------------------------------------------------
+   Real scanned models, not stand-ins. They are what tell the eye the street has
+   a scale: a bench is 1.7 m whatever the buildings claim to be. */
+async function buildProps() {
+  const man = kit.manifest;
+  const loader = new GLTFLoader().setPath('assets/');
+  const get = (k) => new Promise(res => loader.load(man[k].path,
+    g => res(g.scene), undefined, () => res(null)));
+
+  const [lamp, bench, fence, cart, barrel, crate, bush, tree, rockA, tank, pipe] = await Promise.all(
+    ['model.lamppost', 'model.bench', 'model.fence', 'model.cart', 'model.barrel',
+     'model.crate', 'model.bush', 'model.treeReal', 'model.rockA', 'model.tank', 'model.pipe'].map(get));
+
+  /* castShadow is per prop, not blanket-on. These are scanned .glb models at
+     full density — one rooibos bush is heavier than every building on the
+     street put together — and a caster is rendered TWICE, once into the shadow
+     map. Only the props whose shadow the eye would miss cast one. */
+  const CASTS = new Set(['lamp', 'bench', 'tree', 'cart']);
+  const place = (src, name, x, y, z, ry, s = 1) => {
+    if (!src) return;
+    const o = src.clone(true);
+    o.position.set(x, y, z); o.rotation.y = ry; o.scale.setScalar(s);
+    o.userData.src = name;
+    const cast = CASTS.has(name);
+    o.traverse(m => { if (m.isMesh) { m.castShadow = cast; m.receiveShadow = true; } });
+    props.add(o);
+  };
+
+  const E = ROAD_HALF + 1.1;                       // the kerb line
+  for (let i = 0; i < 3; i++) {
+    place(lamp, 'lamp', -30 + i * 25, 0.16, -E, Math.PI * 0.5);
+    place(lamp, 'lamp', -24 + i * 25, 0.16, E, -Math.PI * 0.5);
+  }
+  place(bench, 'bench', -21, 0.16, -E - 1.1, 0);
+  place(bench, 'bench', 6, 0.16, E + 1.1, Math.PI);
+  place(bench, 'bench', 27, 0.16, -E - 1.1, 0);
+  place(fence, 'fence', 39, 0.16, E + 2.2, 0);
+  place(cart, 'cart', -12, 0.16, E + 1.6, 0.7);
+  place(cart, 'cart', 31, 0.16, -E - 1.8, -1.9);
+  for (let i = 0; i < 5; i++) place(barrel, 'barrel', 17 + (i % 3) * 0.95, 0.16 + (i > 2 ? 0.92 : 0), E + 1.5 + Math.floor(i / 3) * 0.9, i * 1.1);
+  for (let i = 0; i < 4; i++) place(crate, 'crate', -27 + (i % 2) * 0.85, 0.16 + Math.floor(i / 2) * 0.62, -E - 1.4, i * 0.6);
+  place(tank, 'tank', 40, 0.16, -E - 2.2, 0.4);
+  place(pipe, 'pipe', 44, 0.16, -E - 2.6, 0);
+  for (let i = 0; i < 3; i++) place(bush, 'bush', -30 + i * 27, 0.16, (i % 2 ? 1 : -1) * (E + 2.6), i, 0.9 + (i % 3) * 0.2);
+  place(tree, 'tree', -6, 0.16, -E - 2.4, 0.5, 1.3);
+  place(tree, 'tree', 21, 0.16, E + 2.6, 2.1, 1.15);
+  place(rockA, 'rock', -37, 0.1, E + 3.4, 1.2, 1.4);
+  place(rockA, 'rock', 47, 0.1, -E - 3.0, 0.3, 1.1);
+  /* A second, deterministic scatter along both pavements. Real streets keep
+     their clutter against the wall, never in the middle of the footway, so
+     every one of these is pushed out to the facade line. */
+  const srnd = (() => { let a = (SEED * 22695477 + 3) >>> 0; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+  /* Barrels, crates and stones only. The scanned bush is the single heaviest
+     model in the pack — one of them outweighs every building on the street —
+     and the weed cards now cover the greenery it was there for. */
+  const kinds = [[barrel, 'barrel', 1], [crate, 'crate', 1], [rockA, 'rock', 0.7]];
+  for (let i = 0; i < 10; i++) {
+    const [src, name, sc] = kinds[Math.floor(srnd() * kinds.length)];
+    const side = srnd() < 0.5 ? -1 : 1;
+    place(src, name, -50 + srnd() * 100, 0.16, side * (E + 1.4 + srnd() * 1.9), srnd() * 6.28, sc * (0.8 + srnd() * 0.5));
+  }
+  place(bench, 'bench', -44, 0.16, E + 1.1, Math.PI);
+  place(bench, 'bench', 44, 0.16, -E - 1.1, 0);
+  scene.add(props);
+}
+
+/* ---- the wall lamps that actually light something ------------------------
+   Every entrance already has an emissive lamp shade; a shade that glows and
+   lights nothing is what makes a night render read as a poster. So the nearest
+   few get a REAL point light. Eight of them, 40 m, LOD0 buildings only — those
+   three numbers are the whole budget, because every extra light is a per-pixel
+   cost on every material in the scene, and eight is where this GPU stops
+   noticing. Off entirely during the day. */
+const LAMP_CAP = 8, LAMP_RANGE = 40;
+const lampPool = [];
+for (let i = 0; i < LAMP_CAP; i++) {
+  const l = new THREE.PointLight(0xffc078, 0, 13, 2);
+  l.visible = false;
+  scene.add(l);
+  lampPool.push(l);
+}
+let lampSites = [];
+/** World positions of every marked bulb, taken once the street is standing. */
+function collectLamps() {
+  lampSites = [];
+  const v = new THREE.Vector3();
+  for (const g of buildings) {
+    g.updateMatrixWorld(true);
+    for (const p of (g.userData.lamps || [])) {
+      v.set(p[0], p[1], p[2]).applyMatrix4(g.matrixWorld);
+      lampSites.push(v.clone());
+    }
+  }
+}
+function updateLamps() {
+  const want = night > 0.5;
+  if (!want) { for (const l of lampPool) if (l.visible) { l.visible = false; l.intensity = 0; } return; }
+  const near = lampSites
+    .map(v => ({ v, d: v.distanceTo(camera.position) }))
+    .filter(o => o.d < LAMP_RANGE)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, LAMP_CAP);
+  lampPool.forEach((l, i) => {
+    if (i < near.length) {
+      l.position.copy(near[i].v);
+      /* Fade the last few out with distance instead of popping them off — a
+         light that switches on as you walk is more visible than no light. */
+      l.intensity = 9 * (1 - Math.pow(near[i].d / LAMP_RANGE, 2));
+      l.visible = true;
+    } else if (l.visible) { l.visible = false; l.intensity = 0; }
+  });
+}
+
+/* ---- night --------------------------------------------------------------
+   Not just an emissive switch: the sun drops to a moon, the environment swaps
+   to the moonlit HDRI, the fog cools, and the bloom is let up so the warm
+   windows actually glow instead of merely being bright. */
+function applyNight(t) {
+  night = t;
+  kit.setNight(t);
+  sun.intensity = 2.6 * (1 - t) + 0.18 * t;
+  sun.color.setHex(t > 0.5 ? 0x9fb4e0 : 0xffd8ab);
+  fill.intensity = 0.55 * (1 - t) + 0.16 * t;
+  scene.environment = t > 0.5 ? kit.envNight : kit.envDusk;
+  kit.setEnvironment(scene.environment);
+  scene.background = t > 0.5 ? (skyNight || null) : (skyDusk || null);
+  scene.backgroundIntensity = t > 0.5 ? 0.45 : 0.62;
+  scene.fog.color.setHex(t > 0.5 ? 0x0a0c14 : 0x50485a);
+  renderer.setClearColor(t > 0.5 ? 0x0a0c14 : 0x50485a, 1);
+  bloom.strength = 0.20 + 0.55 * t;
+  bloom.threshold = 1.0 - 0.42 * t;   // at night the warm windows are the light
+  updateLamps();
+  updateMode();
+}
+
+/* ---- forced LOD ---------------------------------------------------------
+   `L` rebuilds the same twelve buildings at LOD1 and LOD2 in place, which is
+   the only honest way to see whether the bake actually resembles the thing it
+   was baked from. -1 is "as authored" (all LOD0). */
+function applyLod(force) {
+  lodForce = force;
+  buildings.forEach((g, i) => {
+    const s = g.userData.spec;
+    const pos = g.position.clone(), ry = g.rotation.y;
+    scene.remove(g);
+    g.traverse(o => { if (o.isMesh && o.geometry) o.geometry.dispose(); });
+    const ng = kit.make({
+      seed: SEED * 1000 + i * 37,
+      footprint: [s.w, s.d], floors: s.floors,
+      style: s.style, roof: s.roof, palette: s.palette,
+      lod: force < 0 ? 0 : force,
+    });
+    ng.position.copy(pos); ng.rotation.y = ry; ng.userData.spec = s;
+    scene.add(ng);
+    buildings[i] = ng;
+  });
+  collectLamps();
+  updateLamps();
+  updateMode();
+}
+
+function updateMode() {
+  document.getElementById('r-mode').textContent =
+    (night > 0.5 ? 'night' : 'day') + ' · ' + (lodForce < 0 ? 'LOD auto' : 'LOD ' + lodForce);
+}
+
+/* ---- walking ------------------------------------------------------------- */
+const keys = new Set();
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  keys.add(k);
+  if (k === 'n') applyNight(night > 0.5 ? 0 : 1);
+  if (k === 'l') applyLod(lodForce >= 2 ? -1 : lodForce + 1);
+  if (k === 'c') closeUp();
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+
+const fwd = new THREE.Vector3(), right = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+function walk(dt) {
+  const sp = (keys.has('shift') ? 26 : 9) * dt;
+  let moved = false;
+  camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+  right.crossVectors(fwd, up).normalize();
+  const d = new THREE.Vector3();
+  if (keys.has('w')) { d.add(fwd); moved = true; }
+  if (keys.has('s')) { d.sub(fwd); moved = true; }
+  if (keys.has('a')) { d.sub(right); moved = true; }
+  if (keys.has('d')) { d.add(right); moved = true; }
+  if (keys.has('q')) { d.y += 1; moved = true; }
+  if (keys.has('e')) { d.y -= 1; moved = true; }
+  if (moved) {
+    d.normalize().multiplyScalar(sp);
+    camera.position.add(d);
+    controls.target.add(d);
+  }
+}
+
+/* ---- the two reference camera poses -------------------------------------
+   Named, not hand-dragged, so the screenshots in docs/shots/ can be retaken
+   and compared. `closeUp` stands 8 m off the first townhouse's front. */
+function closeUp() {
+  /* Eight metres off the front of building 1 (townhouse · plaster · gable),
+     three-quarter on, at head height plus a little — the pose the detail count
+     in docs/BUILDINGS.md is made against. */
+  camera.position.set(-23.6, 2.2, 2.6);
+  controls.target.set(-30.0, 4.6, -8.5);
+  controls.update();
+}
+function wide() {
+  /* Down the street, not across it: from the far end at eye-ish height the road,
+     both rows of facades and the props between them are all in one frame. */
+  camera.position.set(-52, 7.4, 9.0);
+  controls.target.set(26, 5.2, -1);
+  controls.update();
+}
+
+/* ---- the frame ----------------------------------------------------------- */
+let last = performance.now(), acc = [], hudAt = 0, lampAt = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  renderer.info.reset();
+  acc.push(dt); if (acc.length > 90) acc.shift();
+  walk(dt);
+  controls.update();
+  /* Re-pick the eight lamps twice a second. Every frame would mean a light
+     rig rebuild sixty times a second for a set that changes when you walk two
+     metres; twice a second is under the threshold at which anyone sees it. */
+  if (night > 0.5 && now - lampAt > 500) { lampAt = now; updateLamps(); }
+  composer.render();
+  if (now - hudAt > 400) {
+    hudAt = now;
+    document.getElementById('r-fps').textContent = Math.round(fps());
+    document.getElementById('r-calls').textContent = renderer.info.render.calls;
+    document.getElementById('r-tris').textContent = (renderer.info.render.triangles / 1000).toFixed(0) + 'k';
+  }
+}
+const fps = () => acc.length ? acc.length / acc.reduce((a, b) => a + b, 0) : 0;
+
+/* =========================================================================
+   THE HARNESS HOOKS
+   The screenshot and frame-rate procedure in docs/RUNBOOK.md drives the page
+   by name. Everything it needs is here and nothing else is global.
+   ========================================================================= */
+
+/* ---- the on-screen controls -------------------------------------------
+   The chips in the bottom-right corner looked like buttons and did nothing
+   when they were clicked (Beri, 2026-09-07). They are buttons now, and every
+   one of them calls exactly what the key it shows calls, so there is one
+   behaviour and not two. `orbit` and `walk` are a MODE pair — the one that
+   is on carries `aria-pressed="true"`, which is also what a screen reader
+   reads and what the click test asserts. */
+let camMode = 'orbit';
+function setCamMode(m) {
+  camMode = m;
+  /* Walk mode hands the mouse back: dragging in the middle of walking somewhere
+     is how you lose the horizon. The keys work in both. */
+  controls.enableRotate = (m === 'orbit');
+  for (const b of document.querySelectorAll('#keys .chip[data-act="orbit"], #keys .chip[data-act="walk"]')) {
+    const on = b.dataset.act === (m === 'orbit' ? 'orbit' : 'walk');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.classList.toggle('on', on);
+  }
+}
+/* One step of the wheel, as a number rather than as a synthetic event: a
+   fraction of the distance to whatever the camera is looking at, so it is the
+   same gesture near a shopfront and out over the field. */
+function nudgeZoom(dir) {
+  const t = controls.target;
+  const d = camera.position.clone().sub(t);
+  const k = dir > 0 ? 0.82 : 1.22;
+  const len = Math.min(controls.maxDistance || 1e6, Math.max(controls.minDistance || 0.1, d.length() * k));
+  camera.position.copy(t).add(d.normalize().multiplyScalar(len));
+  controls.update();
+}
+/* Up and down move the target with the camera, exactly as Q and E do. */
+function nudgeY(dy) {
+  camera.position.y += dy;
+  controls.target.y += dy;
+  controls.update();
+}
+document.getElementById('keys').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  switch (b.dataset.act) {
+    case 'orbit':    setCamMode('orbit'); break;
+    case 'walk':     setCamMode('walk'); break;
+    case 'zoom-in':  nudgeZoom(1); break;
+    case 'zoom-out': nudgeZoom(-1); break;
+    case 'up':       nudgeY(2); break;
+    case 'down':     nudgeY(-2); break;
+    case 'night':    applyNight(night > 0.5 ? 0 : 1); break;
+    case 'lod':      applyLod(lodForce >= 2 ? -1 : lodForce + 1); break;
+    case 'closeup':  closeUp(); break;
+  }
+  b.blur();
+});
+setCamMode('orbit');
+/* What the click test reads: the state each chip is supposed to have changed. */
+window.__controls = () => ({
+  mode: camMode, night, rotate: controls.enableRotate,
+  dist: +camera.position.distanceTo(controls.target).toFixed(2),
+  y: +camera.position.y.toFixed(2),
+  lod: lodForce,
+});
+
+window.__ready = () => ready;
+window.__fps = fps;
+window.__calls = () => renderer.info.render.calls;
+window.__tris = () => renderer.info.render.triangles;
+window.__night = (t) => applyNight(t);
+window.__lod = (n) => applyLod(n);
+/* What the frame actually costs, split so the docs can say which half is the
+   generator and which half is the prop pack. Props are whole scanned .glb
+   scenes and carry their own mesh counts; the buildings are nine merges each. */
+window.__budget = () => {
+  const tri = (root) => { let t = 0; root.traverse(o => { if (o.isMesh && o.geometry.index) t += o.geometry.index.count / 3; }); return t; };
+  const meshes = (root) => { let n = 0; root.traverse(o => { if (o.isMesh) n++; }); return n; };
+  return {
+    buildingTris: buildings.reduce((a, g) => a + tri(g), 0),
+    buildingMeshes: buildings.reduce((a, g) => a + meshes(g), 0),
+    propTris: tri(props), propMeshes: meshes(props),
+    byProp: props.children.reduce((a, o) => { a[o.userData.src] = (a[o.userData.src] || 0) + tri(o); return a; }, {}),
+    calls: renderer.info.render.calls, tris: renderer.info.render.triangles,
+  };
+};
+window.__closeup = closeUp;
+window.__wide = wide;
+/* Probe for the LOD1/2 facade-shader attribute budget: builds a throwaway
+   instanced group and counts real GLSL vertex-attribute SLOTS, not geometry
+   attribute keys — `instanceMatrix` is a mat4 and costs 4 slots on its own.
+   The task's ceiling (16) is WebGL's guaranteed MAX_VERTEX_ATTRIBS floor. */
+window.__attrCount = (style = 'townhouse') => {
+  const S = STYLES[style] || STYLES.townhouse;
+  const group = kit.instanced([{ position: [0, 0, 0], rotationY: 0, footprint: [7, 8], floors: 2, style, palette: 'plaster', roof: S.roof, lod: 1, seed: 1 }]);
+  const slots = (mesh) => {
+    let n = Object.keys(mesh.geometry.attributes).length;
+    if (mesh.isInstancedMesh) n += 4; // instanceMatrix: a mat4, not in geometry.attributes, 4 GLSL slots
+    return n;
+  };
+  const body = group.children.find(o => o.isInstancedMesh && o.material.map);
+  const roof = group.children.find(o => o.isInstancedMesh && o !== body);
+  return {
+    body: { names: Object.keys(body.geometry.attributes), slots: slots(body) },
+    roof: roof ? { names: Object.keys(roof.geometry.attributes), slots: slots(roof) } : null,
+  };
+};
+/* Probe for the instanced-roof-overhang fix: builds a throwaway LOD1
+   InstancedMesh at a small and a large footprint and measures the roof
+   mesh's actual world-space width minus the wall's, which should read the
+   same fixed eave (~0.35-0.6 m) at both sizes instead of growing with the
+   building. `heightAboveWall` is the flat-roof parapet's own height — the
+   part of the 2026-09-06 pass that scaled it into a 2 m lid on a big
+   building; it should read a fixed height too. */
+window.__roofOverhang = (style = 'tower') => {
+  const S = STYLES[style] || STYLES.townhouse;
+  const measure = (w, d) => {
+    const group = kit.instanced([{ position: [0, 0, 0], rotationY: 0, footprint: [w, d], floors: 2, style, palette: 'plaster', roof: S.roof, lod: 1, seed: 1 }]);
+    const roof = group.children.find(o => o.geometry !== group.children[0].geometry);
+    const box = new THREE.Box3().setFromObject(roof);
+    const size = box.getSize(new THREE.Vector3());
+    roof.geometry.dispose();
+    return { widthOverhang: size.x - w, depthOverhang: size.z - d, heightAboveWall: size.y };
+  };
+  return { small: measure(6, 8), large: measure(20, 30) };
+};
+/* Probe for the LOD1 roof-rise fix: `instanced()`'s pitched roof prism used a
+   fixed y-scale of 1, so every LOD1 roof rose 0.42 m regardless of its
+   footprint (docs/HANDOFF.md, "the island is alive" pass). Builds the SAME
+   footprint through both LOD1 paths — the single-mesh one (`_makeLod`, which
+   was never scaled and always read the real rise) and the mass `instanced()`
+   one — and measures each roof mesh's own world-space height, so the two can
+   be checked against each other within a tolerance instead of against a
+   number retyped here. */
+window.__roofRise = (style = 'townhouse', w = 8, d = 8, lod = 1) => {
+  const S = STYLES[style] || STYLES.townhouse;
+  const rise = (roof) => new THREE.Box3().setFromObject(roof).getSize(new THREE.Vector3()).y;
+  const single = kit.make({ seed: 1, footprint: [w, d], floors: 2, style, palette: 'plaster', roof: S.roof, lod });
+  const singleRoof = single.children.find(o => o.material === kit.mat.roof);
+  const instGroup = kit.instanced([{ position: [0, 0, 0], rotationY: 0, footprint: [w, d], floors: 2, style, palette: 'plaster', roof: S.roof, lod, seed: 1 }]);
+  const instRoof = instGroup.children.find(o => o.isInstancedMesh && o.material === kit.mat.roof);
+  const result = { single: singleRoof ? rise(singleRoof) : null, instanced: instRoof ? rise(instRoof) : null };
+  result.matchPct = result.single ? Math.abs(result.instanced - result.single) / result.single * 100 : null;
+  single.traverse(o => o.geometry && o.geometry.dispose());
+  instGroup.children.forEach(o => o.geometry.dispose());
+  return result;
+};
+window.__stand = (x, y, z, tx, ty, tz) => {
+  camera.position.set(x, y, z); controls.target.set(tx, ty, tz); controls.update();
+};
+/* Verification probe for the LOD1/2 night-window fix: builds one throwaway
+   instanced LOD1 building 300 m out, narrows the FOV so the frame is mostly
+   its facade rather than sky, reads the canvas back with gl.readPixels and
+   returns the frame's mean luminance at night(0) and night(1) — the ratio is
+   what "night > 3x day" is checked against. Everything it touches (camera
+   FOV/pose, the throwaway group, night) is restored afterwards. */
+window.__nightLuminance = (style = 'townhouse', palette = 'plaster') => {
+  /* The day and night bakes ARE the two textures a distant LOD1/2 building
+     wears — measuring them directly (a full-frame quad, read back with
+     gl.readPixels) is what "the far building's windows" reduces to at 300 m,
+     without a camera-framing guess in between. */
+  const bake = kit._bake(style, palette);
+  const SZ = 512;
+  const quadScene = new THREE.Scene();
+  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const mat = new THREE.MeshBasicMaterial();
+  quadScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+
+  const gl = renderer.getContext();
+  const prevSize = renderer.getSize(new THREE.Vector2());
+  const prevTarget = renderer.getRenderTarget();
+  renderer.setRenderTarget(null);
+  renderer.setSize(SZ, SZ, false);
+  const dayBuf = new Uint8Array(SZ * SZ * 4), nightBuf = new Uint8Array(SZ * SZ * 4);
+  const shoot = (tex, out) => {
+    mat.map = tex; mat.needsUpdate = true;
+    renderer.render(quadScene, quadCam);
+    gl.readPixels(0, 0, SZ, SZ, gl.RGBA, gl.UNSIGNED_BYTE, out);
+  };
+  shoot(bake.albedo, dayBuf);
+  shoot(bake.litAlbedo, nightBuf);
+
+  const lum = (buf, i) => (0.2126 * buf[i] + 0.7152 * buf[i + 1] + 0.0722 * buf[i + 2]) / 255;
+  let wholeDay = 0, wholeNight = 0;
+  /* "Roof-window" luminance, not the whole facade: only a lit WINDOW pixel
+     actually changes between the two bakes (wall, sills, roof, dirt are the
+     same flat-lit render both times), so thresholding on the DELTA — not on
+     how dark the day pixel is — isolates exactly the pixels the fix touches,
+     without the dirt/mortar/shadow pixels (also dark in the day bake, but
+     unchanged at night) diluting the mean. */
+  let winDay = 0, winNight = 0, winCount = 0;
+  for (let i = 0; i < dayBuf.length; i += 4) {
+    const d = lum(dayBuf, i), n = lum(nightBuf, i);
+    wholeDay += d; wholeNight += n;
+    if (n - d > 0.15) { winDay += d; winNight += n; winCount++; }
+  }
+  const px = dayBuf.length / 4;
+
+  renderer.setSize(prevSize.x, prevSize.y, false);
+  renderer.setRenderTarget(prevTarget);
+  mat.dispose();
+
+  return {
+    day: wholeDay / px, night: wholeNight / px, ratio: (wholeNight / px) / (wholeDay / px),
+    windowDay: winDay / winCount, windowNight: winNight / winCount, windowRatio: (winNight / winCount) / (winDay / winCount),
+    windowPixels: winCount,
+  };
+};
+/* The stress the performance gate is stated against: 40 LOD0 + 200 LOD1 +
+   800 LOD2, laid out on a grid behind the street so nothing of the street is
+   disturbed. Calling it twice replaces the previous field rather than adding
+   to it — a stress ladder that silently accumulates is unreadable. */
+window.__stress = (n0 = 40, n1 = 200, n2 = 800) => {
+  if (stressGroup) {
+    scene.remove(stressGroup);
+    stressGroup.traverse(o => { if (o.isMesh && o.geometry) o.geometry.dispose(); });
+  }
+  stressGroup = new THREE.Group();
+  const rnd = (() => { let a = 12345; return () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+  const styles = Object.keys(STYLES), pals = ['plaster', 'brick', 'timber', 'whitewash', 'stone'];
+  const roofs = ['gable', 'hip', 'flat', 'mansard'];
+  /* The distant field draws from a CATALOGUE of ten style+palette+roof
+     combinations rather than all 180. That is not a cheat for the benchmark, it
+     is how a town generator has to work: every extra combination is one more
+     bake and one more InstancedMesh, and a real street repeats its types. */
+  const CATALOGUE = [
+    ['townhouse', 'plaster', 'gable'], ['townhouse', 'brick', 'gable'],
+    ['townhouse', 'whitewash', 'mansard'], ['cottage', 'whitewash', 'hip'],
+    ['cottage', 'timber', 'hip'], ['apartment', 'plaster', 'mansard'],
+    ['shop', 'timber', 'gable'], ['civic', 'stone', 'hip'],
+    ['industrial', 'brick', 'flat'], ['barn', 'timber', 'gable'],
+  ];
+
+  // LOD0 — real geometry, close in
+  for (let i = 0; i < n0; i++) {
+    const w = 7 + rnd() * 6, d = 7 + rnd() * 5;
+    const g = kit.make({
+      seed: 5000 + i, footprint: [w, d], floors: 2 + Math.floor(rnd() * 4),
+      style: styles[Math.floor(rnd() * styles.length)],
+      palette: pals[Math.floor(rnd() * pals.length)],
+      roof: roofs[Math.floor(rnd() * roofs.length)], lod: 0,
+    });
+    g.position.set(-100 + (i % 8) * 16, 0, -40 - Math.floor(i / 8) * 18);
+    stressGroup.add(g);
+  }
+  // LOD1 and LOD2 — instanced, grouped by style+palette+roof
+  const mk = (count, lod, r0, r1) => {
+    const list = [];
+    for (let i = 0; i < count; i++) {
+      const a = rnd() * Math.PI * 2, r = r0 + rnd() * (r1 - r0);
+      const [style, palette, roof] = CATALOGUE[Math.floor(rnd() * CATALOGUE.length)];
+      list.push({
+        seed: 9000 + i, footprint: [7 + rnd() * 7, 7 + rnd() * 6], floors: 2 + Math.floor(rnd() * 5),
+        style, palette, roof, lod,
+        position: [Math.cos(a) * r, 0, Math.sin(a) * r - 60], rotationY: rnd() * Math.PI * 2,
+      });
+    }
+    stressGroup.add(kit.instanced(list));
+  };
+  mk(n1, 1, 90, 230);
+  mk(n2, 2, 250, 620);
+  scene.add(stressGroup);
+  return { lod0: n0, lod1: n1, lod2: n2 };
+};
+
+boot().then(() => requestAnimationFrame(frame)).catch(err => {
+  document.getElementById('boot').innerHTML =
+    '<p>The asset pack did not load: ' + err.message + '</p>';
+  throw err;
+});
+</script>
+
+<!-- === WDM-SEAL (body) — the 1px signature. Inherits currentColor, so it sits on any footer. === -->
+<style>
+/* The seal is a signature, not a badge: it stays under 20% until you look for it.
+   difference-blend, NOT currentColor: inheriting the footer's text colour assumed the
+   footer's text always contrasts with whatever is painted at the very bottom of the
+   page. On a dark decorative panel that runs to the page edge it did not, and the mark
+   vanished (cafe-fundstueck desktop, 2026-08-21). Difference against white is contrast
+   by construction, so it works on cream, near-black and mid-brown alike. */
+/* Bottom-LEFT, not the conventional bottom-right an artist would sign: the demos put a
+   fixed WhatsApp button in the right corner, and it covered the seal completely
+   (carmen-2, 2026-08-21). The left corner is the one nothing floats over.
+   30% and not 20%: difference-blend is weakest against mid-tones, and at 20% a warm tan
+   footer measured only 9 RGB of separation - under the 12 the mark needs to be seen. */
+.wdm-seal{display:block;text-align:left;padding:0 clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* On paper the mark is unreadable, so print spells the studio out instead. */
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+/* Every other element on this page is position:fixed, so the seal is the only
+   thing left in normal flow and would land in the top-left corner. Pinned. */
+.wdm-seal{position:fixed;left:0;bottom:0;z-index:5}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

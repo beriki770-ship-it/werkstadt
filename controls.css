@@ -1,0 +1,281 @@
+/* =============================================================================
+   CONTROLS — enter, exit and search as buttons, bottom-right
+   Shared by globe.html, world.html and index.html. One stylesheet rather than
+   the same block pasted into globe.css, world.css and styles.css: the cluster
+   is the same object on all three pages, and three copies of it is three places
+   for the hit target to drift below 44 px.
+
+   WHY THE BUTTONS EXIST AT ALL. `globe.html?wallpaper=1` is Beri's desktop
+   wallpaper, and Lively forwards MOUSE ONLY to it (`InputForward: 1`, see
+   RUNBOOK "The desktop wallpaper"). So on the desktop the double-click still
+   arrives, but "/" , Escape and Enter never do — every way in and out of a
+   place was a key. These are those three actions with a pointer.
+
+   The three pages do not share a :root, and globe.css defines neither --ember
+   nor --on-map. Every var below therefore carries the literal it would have
+   resolved to, so the cluster looks identical on all three instead of silently
+   losing its accent on the globe.
+   ========================================================================== */
+
+#controls {
+  position: fixed;
+  right: 26px;
+  bottom: 26px;
+  z-index: 8;              /* over the caption (4) and under the fault line (7)
+                              is wrong: a fault message is centred and these are
+                              in a corner, so they never overlap and the buttons
+                              stay reachable while the fault is up. */
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  font-family: var(--mono, "JetBrains Mono", ui-monospace, monospace);
+}
+
+#controls button {
+  /* A glass panel, not the page's usual bare type on the map: these are the one
+     thing on screen that has to look PRESSABLE, and an underline does not. */
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 15px;
+  border: 1px solid rgba(233, 225, 210, .22);
+  border-radius: 3px;
+  background: rgba(10, 9, 16, .52);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+  color: var(--bone, #e9e1d2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 300;
+  letter-spacing: .06em;
+  text-transform: lowercase;
+  white-space: nowrap;
+  cursor: pointer;
+  text-shadow: var(--on-map, 0 1px 3px rgba(8, 7, 12, .92));
+  transition: border-color .2s var(--ease, ease), color .2s var(--ease, ease),
+              background .2s var(--ease, ease);
+}
+
+#controls button:hover,
+#controls button:focus-visible {
+  border-color: var(--ember, #e2703a);
+  color: var(--ember, #e2703a);
+  background: rgba(10, 9, 16, .74);
+}
+#controls button:focus-visible { outline: 2px solid var(--ember, #e2703a); outline-offset: 2px; }
+
+/* Pressed, and the only moment the accent fills rather than outlines. */
+#controls button:active {
+  background: var(--ember, #e2703a);
+  border-color: var(--ember, #e2703a);
+  color: #14100c;
+}
+
+/* Nothing is in the crosshair. Still on screen — the button is where the reader
+   learns that clicking a place first is what arms it. */
+#controls button[disabled] {
+  /* .5 and not .38: at .38 over the planet the panel's own border faded into
+     the terrain and the button read as a rendering artefact rather than as a
+     control that is waiting for something. Measured on
+     docs/shots/controls-globe-1440.png. */
+  opacity: .5;
+  cursor: default;
+  border-color: rgba(233, 225, 210, .18);
+}
+#controls button[disabled]:hover {
+  border-color: rgba(233, 225, 210, .18);
+  color: var(--bone, #e9e1d2);
+  background: rgba(10, 9, 16, .52);
+}
+
+#controls button[hidden] { display: none; }
+
+/* The target's name, appended to "enter". Kept to one word by ctl.js so the
+   cluster cannot grow across the frame when a project is called
+   `wild-digital-moments-site`. */
+#ctl-enter .ctl-target { color: var(--gold, #d2a62c); }
+/* The gap lives here and not in the string, because the span turns into an
+   inline-block on narrow screens and an inline-block swallows a leading space.
+   :not(:empty) so "enter" alone keeps no trailing gap. */
+#ctl-enter .ctl-target:not(:empty) { margin-left: .45em; }
+#ctl-enter[disabled] .ctl-target { color: inherit; }
+
+/* =============================================================================
+   PLAY — the one button that changes the surface, not the place
+   `enter`, `back` and `search` all move you around inside the world; this one
+   opens a whole new window over the desktop (controls.js CONTROLS-PLAY). It is
+   given the gold the target name already uses so it reads as the odd one out of
+   four, and it is the only button here that is never disabled — an action that
+   always works needs no greyed state.
+
+   `#controls` is carried on the selector because `#controls button` above sets
+   the colour with an id AND an element — a bare `#ctl-play` loses to it on
+   specificity, and the button came back bone-white on the first desktop capture
+   (docs/shots/wallpaper-play-button.png, first pass).
+   ========================================================================== */
+#controls #ctl-play { color: var(--gold, #d2a62c); }
+
+/* THE HUD HINT, three seconds on entering play. The kiosk is fullscreen with no
+   tab strip, no address bar and no frame, so "how do I get out" is the only
+   question it leaves a person with. Centred at the top because both bottom
+   corners are already spoken for (the cluster right, the free-fly line and the
+   seal left) and the top centre is the one empty strip on all three pages.
+   pointer-events: none so it can never eat a click on its way out. */
+#play-hint {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  margin: 0;
+  padding: 7px 14px;
+  border: 1px solid rgba(233, 225, 210, .22);
+  border-radius: 3px;
+  background: rgba(10, 9, 16, .52);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+  color: var(--bone, #e9e1d2);
+  font-family: var(--mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 12.5px;
+  font-weight: 300;
+  letter-spacing: .06em;
+  text-shadow: var(--on-map, 0 1px 3px rgba(8, 7, 12, .92));
+  pointer-events: none;
+  animation: play-hint-out 3s var(--ease, ease) forwards;
+}
+
+/* Held solid for two of the three seconds and then faded: a hint that starts
+   dimming immediately reads as a glitch rather than as something leaving. */
+@keyframes play-hint-out {
+  0%, 66% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+/* =============================================================================
+   QUICK LISTS — the search panel, usable with a mouse alone
+   On the wallpaper the field itself can be focused by a click but nothing can
+   be TYPED into it, so a search that is only a text field is a search the
+   desktop does not have. These rows are the same addresses the field would
+   match, taken from the payload the page is already built from — there is
+   nothing here that is not on the map.
+   ========================================================================== */
+#search-quick {
+  margin-top: 1.1em;
+  display: grid;
+  gap: .8em;
+  max-height: 44vh;
+  overflow-y: auto;
+  /* A GLASS PANEL, and the one place on these pages that has one on purpose.
+     The rest of the search is "an underline, not a box" because a one-line
+     field over a map stays readable on its ink shadow alone. Twenty rows of
+     11 px headings do not: on the first capture (controls-globe-search) the
+     LAST WORKED IN / RECENT DAYS headings disappeared into the terrain and the
+     block ran into the caption on the left. The scrim is what separates the
+     list from the planet behind it. */
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(233, 225, 210, .14);
+  border-radius: 4px;
+  background: rgba(10, 9, 16, .74);
+  -webkit-backdrop-filter: blur(11px);
+  backdrop-filter: blur(11px);
+  font-family: var(--mono, "JetBrains Mono", ui-monospace, monospace);
+}
+#search-quick[hidden] { display: none; }
+
+#search-quick h3 {
+  margin: 0 0 .4em;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--bone-dim, #8d857a);
+}
+
+#search-quick .quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#search-quick button {
+  min-height: 44px;        /* the wallpaper is aimed at with a real mouse on a
+                              real desktop; a 22 px chip is a miss */
+  padding: 0 12px;
+  border: 1px solid rgba(233, 225, 210, .2);
+  border-radius: 3px;
+  background: rgba(10, 9, 16, .5);
+  color: var(--bone, #e9e1d2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 300;
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .2s var(--ease, ease), color .2s var(--ease, ease);
+}
+#search-quick button:hover,
+#search-quick button:focus-visible {
+  border-color: var(--ember, #e2703a);
+  color: var(--ember, #e2703a);
+}
+#search-quick button:focus-visible { outline: 2px solid var(--ember, #e2703a); outline-offset: 2px; }
+#search-quick .quick-empty { margin: 0; font-size: 11.5px; color: var(--bone-dim, #8d857a); }
+
+
+/* =============================================================================
+   THE PRESETS
+   ========================================================================== */
+
+/* The kiosk hides everything a person has to be there to use, and on
+   `?screensaver=1` nobody is. */
+body.screensaver #controls { display: none !important; }
+
+/* THE DESKTOP WALLPAPER puts SCREENSAVER on as well (globe.js), so the rule
+   above would take the buttons away on the one surface they were built for.
+   This is the exception, and it is the whole point of the file. */
+body.wallpaper #controls {
+  display: flex !important;
+  /* LIFTED CLEAR OF THE TASKBAR. Lively renders the wallpaper over the whole
+     screen BOUNDS, not the working area — Lively's own Settings.json for this
+     machine reads Bounds "0,0,2880,1800" against WorkingArea "0,0,2880,1704",
+     so the bottom 96 device px of the page are behind the taskbar. At the
+     WebView's dpr of 2 that is 48 CSS px, and the first desktop capture came
+     back with both buttons sliced in half along their middle
+     (docs/shots/wallpaper-controls.png, first pass). 82 px clears a 48 px
+     taskbar and still clears a taller one. */
+  bottom: 82px;
+}
+
+/* A phone has a keyboard and a back gesture, but it has less room: the cluster
+   moves clear of the caption, which goes full-width under 720 px. */
+@media (max-width: 720px) {
+  #controls { right: 14px; bottom: 14px; gap: 6px; max-width: calc(100vw - 28px); }
+  #controls button { padding: 0 10px; font-size: 12px; }
+  /* THE ROW MUST NOT WRAP, and the target's name is the only part that can
+     give. Wrapping was the obvious fix and it is the wrong one: two stacked
+     rows are ~100 px tall and reach up into `body.mobile #caption`, which
+     starts at 92 px — the buttons would then sit on top of the words they were
+     named after. At 390 px the unwrapped row overflowed and pushed `enter` off
+     the right edge entirely (docs/shots/controls-globe-search-390.png, first
+     pass), so the name is cut instead and the row keeps its one line. */
+  #controls { flex-wrap: nowrap; }
+  #ctl-enter { min-width: 0; }
+  #ctl-enter .ctl-target {
+    display: inline-block;
+    max-width: 8ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+  #search-quick { max-height: 38vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #controls button, #search-quick button { transition: none; }
+  /* The hint still has to LEAVE — controls.js removes the element after 3 s
+     either way, so dropping the animation only removes the fade, not the exit. */
+  #play-hint { animation: none; }
+}

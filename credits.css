@@ -1,0 +1,128 @@
+/* =============================================================================
+   werkstadt — credits.css
+   The studio line and the sponsor affordances, shared by globe.html,
+   world.html, index.html and recordings.html.
+
+   Its own file for the same reason controls.css is one: this is the same
+   object on four pages, and four copies of it would drift apart the first
+   time one of them was touched. It is loaded AFTER each page's own
+   stylesheet, so it may lean on that page's tokens (--mono, --gold,
+   --bone-dim, --on-map) and every one of them carries a literal fallback —
+   recordings.css does not define the same set the three 3D pages do.
+
+   Placement is bottom-CENTRE and that is not a default. The left corner is
+   the W mark and the caption, the right corner is the controls cluster; the
+   centre is the only strip on all four pages that nothing else claims. The
+   brief for this line is explicit that it must never land on either.
+   ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+   CREDITS — "Built by Wild Digital Moments · Hire us · Sponsor"
+   -------------------------------------------------------------------------- */
+.credits {
+  position: fixed;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  z-index: 6;                 /* over the caption (4), under the controls (8) */
+  display: flex;
+  align-items: baseline;
+  gap: .55em;
+  max-width: min(620px, calc(100vw - 220px));
+  font-family: var(--mono, "JetBrains Mono", ui-monospace, monospace);
+  font-weight: 300;
+  font-size: 11px;
+  letter-spacing: .09em;
+  white-space: nowrap;
+  color: var(--bone-dim, #8d857a);
+  /* The same ink shadow the rest of the type on these pages uses: this line
+     sits on a lit 3D scene, and a background box here would be the panel the
+     whole design refuses to have. */
+  text-shadow: var(--on-map, 0 1px 3px rgba(6,5,10,.94));
+}
+
+.credits a {
+  color: var(--bone, #e9e1d2);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(233,225,210,.24);
+  padding-bottom: 1px;
+  transition: color .25s ease, border-color .25s ease;
+}
+.credits a:hover,
+.credits a:focus-visible { color: var(--gold, #d2a62c); border-color: var(--gold, #d2a62c); }
+.credits a:focus-visible { outline: 2px solid var(--gold, #d2a62c); outline-offset: 3px; }
+
+.credits .credits-sep { opacity: .45; }
+
+/* -----------------------------------------------------------------------------
+   SPONSOR — the masthead button and the controls-cluster chip
+   Two sizes of the same object. The button is the ask; the chip is the one
+   that is still reachable on the desktop wallpaper, where the masthead is
+   hidden and the controls cluster is the only thing a mouse can hit.
+   -------------------------------------------------------------------------- */
+.sponsor-btn {
+  /* #masthead is pointer-events:none on the three 3D pages so a drag passes
+     through the title to the scene behind it. The button has to switch them
+     back on for itself, exactly the way .mast-link already does. */
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .45em;
+  margin-top: 10px;
+  padding: 5px 12px;
+  border: 1px solid var(--gold, #d2a62c);
+  border-radius: 2px;
+  background: transparent;
+  font-family: var(--mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--gold, #d2a62c);
+  transition: background-color .25s ease, color .25s ease;
+}
+.sponsor-btn:hover,
+.sponsor-btn:focus-visible { background: var(--gold, #d2a62c); color: #16130f; }
+.sponsor-btn:focus-visible { outline: 2px solid var(--gold, #d2a62c); outline-offset: 2px; }
+.sponsor-btn .heart { font-size: 12px; line-height: 1; }
+
+/* The chip lives inside #controls, so it inherits that cluster's font and
+   sits on its baseline; only the colour says it is not one of the three
+   navigation verbs. */
+.sponsor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4em;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(210,166,44,.55);
+  border-radius: 2px;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-decoration: none;
+  color: var(--gold, #d2a62c);
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease;
+}
+.sponsor-chip:hover,
+.sponsor-chip:focus-visible { background: var(--gold, #d2a62c); color: #16130f; border-color: var(--gold, #d2a62c); }
+.sponsor-chip:focus-visible { outline: 2px solid var(--gold, #d2a62c); outline-offset: 2px; }
+
+/* -----------------------------------------------------------------------------
+   THE DESKTOP WALLPAPER — lifted clear of the taskbar
+   Same measurement controls.css documents: Lively paints the whole screen
+   bounds, not the working area, so the bottom ~48 CSS px of the page are
+   behind the taskbar. 88 px clears it and still clears a taller one.
+   -------------------------------------------------------------------------- */
+body.wallpaper .credits { bottom: 88px; }
+
+/* -----------------------------------------------------------------------------
+   NARROW SCREENS — the line stays, the chip goes
+   Under 720 px the controls cluster moves to the bottom-right corner at 14 px
+   and there is no room for a fourth button beside it. The credit line is the
+   part that must survive, so it keeps the centre and loses its width guard.
+   -------------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .credits { font-size: 10px; max-width: calc(100vw - 24px); bottom: 4px; }
+  .sponsor-chip { display: none; }
+}

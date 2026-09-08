@@ -1,0 +1,63 @@
+{
+  "_comment": [
+    "THE TRADE TABLE — what a project's landmark building looks like.",
+    "",
+    "THIS FILE IS MEANT TO BE EDITED. It is the one piece of Werkstadt that",
+    "knows what YOUR projects are about, and the shipped list is only a",
+    "starting point. Add a row for the kind of work you actually do and the",
+    "town gets a building shaped like it.",
+    "",
+    "How it works: for each project the server reads its index.html <title>,",
+    "its meta description, its og:site_name, its JSON-LD name, and the first",
+    "60 KB of docs/BRIEF.md and docs/README.md. Each row below is a regular",
+    "expression (case-insensitive, JavaScript/Python flavour) and a",
+    "schema.org type. The FIRST row that matches wins, so put the specific",
+    "words first and the catch-alls last — otherwise `tool` swallows every",
+    "project that merely mentions a server.",
+    "",
+    "A hit in the page's own title, og:site_name or JSON-LD name is trusted",
+    "on its own. A hit anywhere else (BRIEF, README, meta description) needs",
+    "a second, independent hit for the same type before it counts — one stray",
+    "word in a README must not decide a whole project's trade.",
+    "",
+    "The `type` must be a schema.org type the world knows how to build. The",
+    "ones with their own landmark model are: MusicSchool, Restaurant,",
+    "CafeOrCoffeeShop, Hotel, GovernmentOrganization, Carpenter, Plumber,",
+    "Manufacturer, EducationalOrganization, HomeAndConstructionBusiness,",
+    "Photographer, SoftwareApplication, SoftwareSourceCode, Book,",
+    "VideoObject. Anything else falls back to a generic civic building.",
+    "",
+    "Not English? Add your language to the same row rather than making a new",
+    "one — the pattern is a normal alternation:",
+    "   { \"match\": \"\\\\brestaurant\\\\b|\\\\bimbiss\\\\b|מסעדה\", \"type\": \"Restaurant\" }"
+  ],
+
+  "trades": [
+    { "match": "\\bmusic\\s*school\\b|\\bconservator(?:y|ium)\\b", "type": "MusicSchool" },
+    { "match": "\\bcaf[eé]\\b|\\bcoffee\\s*(?:shop|house|bar)\\b|\\bespresso\\b", "type": "CafeOrCoffeeShop" },
+    { "match": "\\brestaurant\\b|\\bbistro\\b|\\bdiner\\b|\\bpizzeria\\b|\\btakeaway\\b", "type": "Restaurant" },
+
+    "-- lodging: Deliberately NOT `breakfast` or `booking`: both false-positive on ordinary software projects (a `booking flow` is a widget, not a hotel).",
+    { "match": "\\bhotel\\b|\\bguest\\s*house\\b|\\bguesthouse\\b|\\bhostel\\b|\\binn\\b|\\bbed\\s*(?:&|and)\\s*breakfast\\b", "type": "Hotel" },
+
+    "-- civic: Deliberately NOT `district` or `region`: a directory of local businesses is not a municipal site.",
+    { "match": "\\btown\\s*hall\\b|\\bmunicipalit(?:y|ies)\\b|\\bcity\\s*council\\b|\\btourism\\s*board\\b|\\bcitizen\\s*service\\b", "type": "GovernmentOrganization" },
+
+    { "match": "\\bcarpenter\\b|\\bjoiner(?:y)?\\b|\\bcabinet\\s*maker\\b", "type": "Carpenter" },
+    { "match": "\\bplumber\\b|\\bplumbing\\b|\\bheating\\s*engineer\\b", "type": "Plumber" },
+    { "match": "\\bmachine\\s*(?:shop|building)\\b|\\bpump\\b|\\bgearbox\\b|\\bmanufactur(?:er|ing)\\b|\\bfoundry\\b", "type": "Manufacturer" },
+    { "match": "\\bschool\\b|\\bcourse\\b|\\bteaching\\b|\\bcurriculum\\b|\\bworkshop\\s*series\\b", "type": "EducationalOrganization" },
+    { "match": "\\bglazier\\b|\\bglass\\s*works\\b|\\broofer\\b|\\bbuilder(?:s)?\\b|\\bconstruction\\s*(?:company|firm)\\b", "type": "HomeAndConstructionBusiness" },
+
+    "-- photo: Two-sided on purpose: `drone` alone is a hobby word, `aerial photography` is a trade.",
+    { "match": "(?:photo|aerial|video|film).{0,40}(?:drone|studio)|(?:drone|studio).{0,40}(?:photo|aerial|video|film)", "type": "Photographer" },
+
+    { "match": "\\bwordpress\\b[\\s\\S]*\\bplugin\\b|\\bplugin\\b[\\s\\S]*\\bwordpress\\b", "type": "SoftwareApplication" },
+    { "match": "\\bandroid\\b|\\bios\\b|\\bpwa\\b|\\bmobile\\s*app\\b|\\bapp\\b", "type": "SoftwareApplication" },
+    { "match": "\\bpicture\\s*book\\b|\\bchildren'?s\\s*book\\b|\\bnovel\\b|\\bbook\\b", "type": "Book" },
+    { "match": "\\bvideo\\b|\\bpromo\\b|\\btrailer\\b|\\bfilm\\b", "type": "VideoObject" },
+
+    "-- catchall: Last on purpose. Every developer project mentions one of these words somewhere.",
+    { "match": "\\btool\\b|\\bcli\\b|\\bserver\\b|\\bskill\\b|\\blibrary\\b|\\bsdk\\b", "type": "SoftwareSourceCode" }
+  ]
+}

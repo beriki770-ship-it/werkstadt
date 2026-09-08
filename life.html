@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Life — the street, populated</title>
+<meta name="description" content="A BuildingKit street, a plaza and a pasture with people walking it, traffic keeping its lane, a herd grazing, birds flocking and robots carrying their task tags. Every count comes from data.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0d12'/%3E%3Cg fill='%23d2a62c'%3E%3Ccircle cx='12' cy='9' r='3'/%3E%3Crect x='10.5' y='13' width='3' height='9'/%3E%3Crect x='7' y='22' width='3' height='6'/%3E%3Crect x='14' y='22' width='3' height='6'/%3E%3Crect x='20' y='16' width='8' height='6' rx='1'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="life.css">
+
+<!-- Three.js pinned to the same version and the same package as world.html and
+     buildings.html, so the three pages cannot drift onto different renderers
+     under a screenshot. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     STAGE — the WebGL canvas everything lives in
+     ========================================================================= -->
+<section id="stage" data-sid="stage" data-title="The 3D canvas: a populated street, plaza and pasture">
+  <canvas id="street" aria-hidden="true"></canvas>
+  <p class="sr-only" id="a11y-status" role="status" aria-live="polite">Loading the street.</p>
+</section>
+
+<!-- =========================================================================
+     MASTHEAD — what the page is, top left
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Title and the one-line description of what is on screen">
+  <h1>Life</h1>
+  <p>People, traffic, herds, flocks and robots on a
+     <b>BuildingKit</b> street.<br>
+     Every population is <b id="mode-line">a number that was passed in</b>.</p>
+</header>
+
+<!-- =========================================================================
+     READOUT — frame rate, draw calls, populations, top right
+     The performance claim in docs/LIFE.md is checkable by looking here.
+     ========================================================================= -->
+<aside id="readout" data-sid="readout" data-title="Live frame rate, draw calls, triangles and how many characters are on real skeletons">
+  <p><b id="r-fps">--</b> fps<br>
+     <b id="r-calls">--</b> draw calls<br>
+     <b id="r-tris">--</b> triangles<br>
+     <b id="r-anim">--</b> skinned / <span id="r-actors">--</span> actors<br>
+     <span id="r-mode">day</span></p>
+</aside>
+
+<!-- =========================================================================
+     LEGEND — the populations and where each number came from, bottom left
+     This panel IS the design rule: nothing on screen has a count this module
+     invented, and the legend is where that is checkable.
+     ========================================================================= -->
+<aside id="legend" data-sid="legend" data-title="Which population is which, and the data each count stands for">
+  <p id="legend-body">…</p>
+</aside>
+
+<!-- =========================================================================
+     KEYS — the controls, bottom right
+     ========================================================================= -->
+<!-- Every chip here is a real button. They LOOKED like buttons and did
+     nothing on click (Beri, 2026-09-07); a control that reads as a control has
+     to be one. The keys still do exactly what they did — these call the same
+     functions — and the keycap typography is unchanged. -->
+<nav id="keys" data-sid="keys" data-title="Mouse, keyboard and click controls for the showcase" aria-label="View controls">
+  <p><button type="button" class="chip" data-act="orbit" aria-label="Orbit mode: drag to look around"><kbd>drag</kbd>orbit</button> &nbsp; <button type="button" class="chip" data-act="zoom-in" aria-label="Zoom in"><kbd>scroll</kbd>zoom in</button> <button type="button" class="chip" data-act="zoom-out" aria-label="Zoom out"><kbd>scroll</kbd>out</button><br>
+     <button type="button" class="chip" data-act="walk" aria-label="Walk mode: keys move the camera"><kbd>W A S D</kbd>walk</button> &nbsp; <button type="button" class="chip" data-act="up" aria-label="Move the camera up"><kbd>Q</kbd>up</button> <button type="button" class="chip" data-act="down" aria-label="Move the camera down"><kbd>E</kbd>down</button><br>
+     <button type="button" class="chip" data-act="night" aria-label="Toggle day and night"><kbd>N</kbd>night</button></p>
+</nav>
+
+<!-- =========================================================================
+     BOOT — the only thing on screen while the pack loads and the clips bake
+     ========================================================================= -->
+<div id="boot" data-sid="boot" data-title="Loading state, shown until the first frame is drawn">
+  <p>loading the pack and baking the walk cycles…</p>
+</div>
+
+<!-- =========================================================================
+     SHOWCASE SCRIPT — the street, and what lives on it
+     Kept inline rather than in a fourth file: it is the page, not the library.
+     life.js is the reusable half and has no idea this page exists.
+     ========================================================================= -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { BuildingKit } from './buildings.js';
+import { Life } from './life.js';
+
+/* =========================================================================
+   THE NUMBERS
+   The whole point of the module is that it never invents a population, so the
+   showcase has to be honest about where these came from too: they are the
+   brief's own figures, and `?stress=1` swaps in the target the performance
+   gate is stated against. In the world this ends up in they come from
+   sessions, link weights and the live agent list instead.
+   ========================================================================= */
+const params = new URLSearchParams(location.search);
+const STRESS = params.get('stress') === '1';
+/* The five numbers the Hunyuan statics pass added, and where each one comes
+   from — the data rule applies to a chicken exactly as it applies to a crowd:
+     chickens  a fenced field with a farm on it is a yard, and a yard has hens;
+     dogs      one per forty people, which is a walked dog on this pavement;
+     cats      one per square;
+     bushHedge along the pavement runs;
+     bushFence along the pasture's own fence line.
+   In the world these arrive from the settlement class the same way the
+   residents arrive from the sessions. */
+const POP = STRESS
+  ? { humans: 300, workers: 30, cars: 80, robots: 8, sheep: 78, cows: 24, horses: 18, birds: 180, parrots: 20,
+      chickens: 14, dogs: 7, cats: 2, bushHedge: 40, bushFence: 30 }
+  : { humans: 120, workers: 12, cars: 30, robots: 6, sheep: 20, cows: 6, horses: 0, birds: 80, parrots: 8,
+      chickens: 6, dogs: 3, cats: 2, bushHedge: 22, bushFence: 16 };
+/* `workers` is the share of the crowd on the hi-vis 'human.worker' rig, dealt
+   through populate({workers}) — the public API the city's crew regime asked for,
+   demonstrated here. It is carved OUT of `humans` so the total on the street is
+   unchanged: a dozen of the 120 wear a vest, which is a street with a crew on it
+   rather than a parade. */
+POP.residents = Math.max(0, POP.humans - POP.workers);
+/* `?robots=N` overrides the robot count — the one lever the accident gate needs,
+   because reportError() throws whoever is NEAREST the impact (robot or person),
+   and the city and the globe both pass robots:0. `?robots=0` here reproduces
+   that host on the showcase, so the accident can be proven to stage on a PERSON
+   and pull in a car + ambulance with no robot on the street to fall instead. */
+if (params.has('robots')) POP.robots = Math.max(0, +params.get('robots') || 0);
+document.getElementById('mode-line').textContent =
+  STRESS ? 'the stress target' : 'a number that was passed in';
+
+/* ---- renderer, scene, camera -------------------------------------------- */
+const canvas = document.getElementById('street');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+/* autoReset off, reset by hand once per frame — with an EffectComposer the
+   last thing drawn is the output pass's fullscreen quad, and an auto-reset
+   counter read after composer.render() reports "1 draw call" for everything. */
+renderer.info.autoReset = false;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x2b2733, 160, 780);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.25, 2400);
+camera.position.set(-34, 5.4, 22);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(-6, 2.2, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 3;
+controls.maxDistance = 620;
+
+/* ---- the sun ------------------------------------------------------------
+   The shadow camera is pulled tight around the street rather than the whole
+   600 m of ground: the only shadows that matter here are the twelve nearest
+   characters' and the buildings they walk past. */
+const sun = new THREE.DirectionalLight(0xffd8ab, 2.6);
+sun.position.set(-46, 40, 44);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1536, 1536);
+sun.shadow.camera.left = -75; sun.shadow.camera.right = 75;
+sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -50;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 220;
+sun.shadow.bias = -0.0008;
+sun.shadow.normalBias = 0.035;
+scene.add(sun);
+const fill = new THREE.HemisphereLight(0x9fb6d8, 0x3a3128, 0.55);
+scene.add(fill);
+
+/* ---- bloom, the same shape the other two pages use ---------------------- */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth * 0.4, innerHeight * 0.4), 0.20, 0.55, 1.0);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  composer.setSize(innerWidth, innerHeight);
+  bloom.setSize(Math.round(innerWidth * 0.4), Math.round(innerHeight * 0.4));
+});
+
+/* =========================================================================
+   THE GROUND
+   Flat where the wheels and the pavement are, rolling out in the field. That
+   is not decoration: life.js takes a getHeight(x, z) callback and puts every
+   foot, hoof and tyre on it, and a herd on a hill is the only way to see
+   whether that contract actually holds.
+   ========================================================================= */
+const ROAD_HALF = 5.5;       // half the carriageway
+/* Pavement width. The stress scene puts 300 people on the SAME graph the 120
+   showcase uses, and the two pinch points that keep separation a FAIL there —
+   the pavement node where four flows merge and the kerbs of the four zebras —
+   are congestion, not a solver defect: at one person per 0.7 m² no relaxation
+   can separate bodies that do not fit. So the stress showcase gets a wider
+   pavement: 6.4 m of walkable band (3.2 m each side of the graph line) against
+   the showcase's 3.4, which nearly doubles the area at every pinch and lets the
+   crowd spread laterally instead of piling. The 120-person showcase keeps its
+   3.4 m — its shots and its 0.000/s separation are unchanged. */
+const VERGE = STRESS ? 6.4 : 3.4;  // pavement width
+const CROSS_X = 12;          // where the side street crosses
+const PLAZA = { x: 64, z: 30, r: 12 };
+/* The market square, and the reason it is HERE: it sits ON the side street,
+   which is the only way to show what addPlaza({ carsAllowed: false }) is for.
+   A plaza beside a road proves nothing; a plaza across one is a pedestrian
+   zone, and life.js cuts that stretch out of the lane graph so no vehicle can
+   drive through the paving. The ground is already flat here — the side street
+   flattens the whole corridor — so it needed no new terrain. */
+const PZONE = { x: CROSS_X, z: -50, r: 11 };
+const PASTURE = [[30, 50], [106, 50], [106, 116], [30, 116]];
+
+function groundHeight(x, z) {
+  /* Two flat corridors — the main road and the cross street — and a smooth
+     ramp out of them into the rolling field. Written as a shape rather than a
+     lookup so life.js can call it a thousand times a frame for free. */
+  const nearMain = 1 - Math.min(1, Math.max(0, Math.abs(z) - 20) / 30);
+  const nearCross = 1 - Math.min(1, Math.max(0, Math.abs(x - CROSS_X) - 9) / 26);
+  const dPlaza = Math.hypot(x - PLAZA.x, z - PLAZA.z);
+  const nearPlaza = 1 - Math.min(1, Math.max(0, dPlaza - (PLAZA.r + 4)) / 18);
+  const flat = Math.min(1, Math.max(nearMain, Math.max(nearCross, nearPlaza)));
+  const roll = Math.sin(x * 0.043) * 1.7 + Math.cos(z * 0.036) * 2.1 + Math.sin((x + z) * 0.021) * 1.1;
+  return (1 - flat) * roll;
+}
+
+let kit, life, ready = false, night = 0;
+/* Every ground material, kept so applyNight() can pull its environment down.
+   The night HDRI (moonlit_golf) is BRIGHTER over the upper hemisphere than the
+   dusk one, and a road is the one surface that faces the whole of it: at the
+   same envMapIntensity the carriageway came out paler at midnight than at
+   dusk, which is the single most wrong thing a night render can do. */
+const groundMats = [];
+const rememberDay = m => { m.userData.dayEnv = m.envMapIntensity; return m; };
+let skyDusk = null, skyNight = null;
+
+async function boot() {
+  kit = await BuildingKit.load(renderer, 'assets/manifest.json');
+  kit.setEnvironment(kit.envDusk);
+  scene.environment = kit.envDusk;
+
+  const rgbe = new RGBELoader().setPath('assets/');
+  const sky = p => new Promise(res => rgbe.load(p, t => {
+    t.mapping = THREE.EquirectangularReflectionMapping; res(t);
+  }, undefined, () => res(null)));
+  [skyDusk, skyNight] = await Promise.all([sky(kit.manifest.hdriDusk.path), sky(kit.manifest.hdriNight.path)]);
+  scene.background = skyDusk;
+  scene.backgroundIntensity = 0.62;
+
+  await buildGround();
+  buildStreet();
+  const seats = buildPlaza();
+  const marketSeats = buildMarket();
+  await buildTreesAndFences();
+
+  /* ---- and now the living layer -------------------------------------- */
+  life = await Life.load(renderer, scene, {
+    manifestUrl: 'assets/manifest.json',
+    getHeight: groundHeight,
+    seed: 7,
+  });
+
+  /* Roads carry a weight. In the world it is the link weight out of the real
+     graph; here the main street is four times the side street, and life.js
+     puts four times the traffic on it without being told how many cars that
+     is. */
+  life.addRoads([
+    /* Ends at 92 and not 96, four metres inside the carriageway's own 98: a
+       lane is a LOOP, so a vehicle is always straddling the wrap, and an
+       eight-metre bus doing it at 96 had its nose on the grass in the street
+       shot. */
+    /* The main street: a two-lane town carriageway, so it is the one that gets
+       a bus service. */
+    Object.assign([[-92, 0, 0], [-40, 0, 0], [CROSS_X, 0, 0], [50, 0, 0], [92, 0, 0]],
+                  { weight: 4, lanes: 2, settlement: 'town' }),
+    /* The side street runs south out of town and north past the market to the
+       fields — one lane, a hamlet at the far end of it. That is what makes it
+       the road the TRACTOR is on and the main street the one it is not, and it
+       is the host saying so rather than life.js guessing. Between them the two
+       demonstrate both halves of the rule in _deckFor(). */
+    Object.assign([[CROSS_X, 0, -66], [CROSS_X, 0, -20], [CROSS_X, 0, 0], [CROSS_X, 0, 30]],
+                  { weight: 1, lanes: 1, settlement: 'hamlet', field: true }),
+  ]);
+
+  /* The market square: a pedestrian zone ACROSS the side street. Declared
+     after the roads and before the walkways, so life.js cuts the crossing
+     stretch out of the lane graph and then wires the square into the pavement
+     graph in the same pass. */
+  life.addPlaza([PZONE.x, 0, PZONE.z], PZONE.r, {
+    carsAllowed: false, seats: marketSeats,
+    /* The MARKET square, and its furniture says so. A kiosk and a bus shelter
+       stand where the side street stops at the paving — that kerb is the only
+       place on this square a vehicle ever reaches, which is exactly where a
+       town puts both. The playground is here and not on the leisure plaza
+       because this is the square the houses are on. */
+    kiosk: true, busstop: true, playground: true,
+  });
+
+  /* The leisure plaza, declared through addPlaza rather than in the walkways
+     list so it can carry furniture too. Identical to a plaza passed to
+     addWalkways in every other respect — cars ARE allowed through here, there
+     is simply no road that goes near it. Its trade is café, so it gets the
+     tables; its centre is open, so it gets the fountain. */
+  life.addPlaza([PLAZA.x, 0, PLAZA.z], PLAZA.r, { seats, fountain: true, cafeTables: 3 });
+
+  /* Pavements both sides, a stub to every front door, and the plaza. */
+  const walk = [];
+  const KERB = ROAD_HALF + VERGE * 0.55;
+  /* The pavement each side, and — this is the part that was wrong until the
+     errands pass — with every FRONT DOOR'S x in the line.
+
+     life.js welds two walkway points within 0.75 m into one node. The stubs
+     below run from a door back to the kerb at the door's own x, and the kerb
+     line was a plain eight-metre grid, so a stub almost never landed on a node
+     of it: every door was its own two-node island. The graph came out in
+     FOURTEEN pieces of ninety-five nodes, which nothing noticed while a
+     pedestrian only ever hopped to a neighbouring node — and which made every
+     errand in this pass unreachable the moment they had somewhere to be.
+     `__counts().walk` is the number that says so. */
+  for (const s of [-1, 1]) {
+    const xs = [];
+    for (let x = -96; x <= 96; x += 8) xs.push(x);
+    for (const d of doorPoints) if (Math.sign(d[2]) === s) xs.push(d[0]);
+    /* And the two corners where the side street's own pavements run into this
+       one. The grid is multiples of eight and the side street is at x = 12, so
+       its kerbs at 4.63 and 19.37 had no node within the 0.75 m weld radius —
+       every point of both side-street pavements was in a component of its own,
+       twenty-one nodes that no errand on the main street could reach. */
+    xs.push(CROSS_X - KERB, CROSS_X + KERB);
+    xs.sort((a, b) => a - b);
+    /* And the eight-metre grid does NOT get to put a paving stone in the
+       middle of the side street. x = 8 and x = 16 are both inside the side
+       street's own 11 m carriageway, so the main pavement had two nodes out in
+       the traffic and a walker heading east stood on them — two of the five
+       people the probe found in the road on every frame. Dropping them leaves
+       the kerb-to-kerb hop 4.63 → 19.37, which life.js's _edgeCrossings() then
+       classifies as what it is: the crossing over the side street. */
+    walk.push(xs.filter(x => Math.abs(x - CROSS_X) >= ROAD_HALF).map(x => [x, 0, s * KERB]));
+  }
+  for (const d of doorPoints) walk.push([[d[0], 0, d[2]], [d[0], 0, Math.sign(d[2]) * KERB]]);
+  /* Both sides of the cross street too. With only one stub down it, a hundred
+     and twenty pedestrians all shared one strip of main-road pavement and
+     walked in a conga line.
+
+     Each side RUNS UP TO THE KERB of the main road, so its last point lands
+     0.63 m from a main-line node and welds onto it. Stopped at z = 4, as it
+     was, the side street's pavements were two more islands.
+
+     It stops at the SOUTH kerb and does not jump the main road. Running it on
+     to +KERB put nodes at z = -4 and z = +4 — both inside the main street's
+     11 m carriageway — and the edge between them was a pavement running down
+     the middle of the road that nothing classified as a crossing, so walkers
+     used it in state 'walk' and no driver ever braked for them. The two
+     pavements are still one graph: this line welds onto the main pavement's
+     own node at (CROSS_X ∓ KERB, -KERB), and the way to the far side is the
+     zebra the junction search already put there. */
+  for (const s of [-1, 1]) {
+    const line = [];
+    for (let z = -60; z < -KERB; z += 8) line.push([CROSS_X + s * KERB, 0, z]);
+    line.push([CROSS_X + s * KERB, 0, -KERB]);
+    walk.push(line);
+  }
+  walk.push([[48, 0, KERB], [56, 0, 14], [PLAZA.x - 6, 0, 24], [PLAZA.x, 0, PLAZA.z]]);
+  /* The pavement's real width goes with it. life.js spreads its walkers across
+     it rather than in a single file, and without the number it has to guess —
+     which put a third of the crowd on the grass verge. */
+  life.addWalkways(walk, [], { width: VERGE, bushes: POP.bushHedge });
+
+  /* The pasture: in the world this herd is the dormant projects. */
+  life.addPasture(PASTURE, {
+    sheep: POP.sheep, cows: POP.cows, horses: POP.horses,
+    chickens: POP.chickens, bushes: POP.bushFence,
+  });
+
+  life.addSkyBox({ min: [-100, 6, -80], max: [130, 46, 130] },
+                 { birds: POP.birds, parrots: POP.parrots });
+
+  /* The page's own solid objects, before populate() builds the obstacle map
+     out of them. Order matters exactly the way addPlaza's does: the map is
+     built at the end of populate, so anything declared after it is invisible
+     to the walk layer. */
+  life.addObstacles(hostObstacles);
+
+  life.populate({ humans: POP.residents, workers: POP.workers, cars: POP.cars,
+                  robots: POP.robots, dogs: POP.dogs, cats: POP.cats });
+
+  /* park() — a STATIONARY work van at a fixed spot: the site vehicle the city's
+     crew regime wants standing AT the printing building, not merely pulled near
+     it by the road's traffic weight. It stands at the main-street kerb here; its
+     box is in _vehicleBoxes(), so the crowd steps round it and __penetrations()
+     counts it like any stopped car. In the city the one-liner is
+     `life.park('van', x, z, yaw)` at the site's own forecourt. */
+  life.park('van', -34, ROAD_HALF + VERGE * 0.55, Math.PI / 2);
+
+  /* Robots ARE the live agents. Six of them here, with the tags a session
+     would really carry. */
+  life.setLiveAgents([
+    { id: 'a1', label: 'life.js · write', pos: [-30, 0, 9] },
+    { id: 'a2', label: 'buildings · read', pos: [-6, 0, -9] },
+    { id: 'a3', label: 'assets · fetch', pos: [18, 0, 9] },
+    { id: 'a4', label: 'docs · audit', pos: [44, 0, -9] },
+    { id: 'a5', label: 'shots · capture', pos: [PLAZA.x - 4, 0, PLAZA.z + 3] },
+    { id: 'a6', label: 'server · watch', pos: [CROSS_X + 5, 0, -34] },
+    { id: 'a7', label: 'manifest · verify', pos: [-64, 0, 9] },
+    { id: 'a8', label: 'runbook · edit', pos: [76, 0, -6] },
+  ].slice(0, POP.robots));
+
+  writeLegend();
+  applyNight(0);
+
+  ready = true;
+  const b = document.getElementById('boot');
+  b.classList.add('gone');
+  setTimeout(() => { b.hidden = true; }, 700);
+  document.getElementById('a11y-status').textContent =
+    `A street with ${POP.humans} people walking it, ${POP.cars} vehicles in traffic, ` +
+    `${POP.sheep + POP.cows + POP.horses + POP.chickens} animals in the pasture and ` +
+    `${POP.birds + POP.parrots} birds overhead. ` +
+    'Use W, A, S and D to walk, N for night.';
+}
+
+/* ---- ground: rolling grass, a flat carriageway, pavements --------------- */
+async function buildGround() {
+  const t = kit.tex;
+  /* BuildingKit loads the five textures a BUILDING needs — plaster, brick,
+     roof tiles, cobble, gravel — and asphalt is not one of them, because a
+     building generator has no business owning the road surface. So the
+     carriageway's texture is loaded here, from the same manifest. */
+  const texLoader = new THREE.TextureLoader().setPath('assets/');
+  const loadTex = (path, srgb) => new Promise(res => texLoader.load(path, tt => {
+    tt.wrapS = tt.wrapT = THREE.RepeatWrapping;
+    tt.anisotropy = 8;
+    if (srgb) tt.colorSpace = THREE.SRGBColorSpace;
+    res(tt);
+  }));
+  const am = kit.manifest.asphalt;
+  const [ad, an, ar] = await Promise.all([
+    loadTex(am.diffuse, true), loadTex(am.normal, false), loadTex(am.roughness, false)]);
+  t.asphalt = { diffuse: ad, normal: an, arm: ar, tile: am.metresPerTile };
+
+  const mk = (s, rep, tint, extra = {}) => {
+    const c = {};
+    for (const k of ['diffuse', 'normal', 'arm']) { c[k] = s[k].clone(); c[k].needsUpdate = true; c[k].repeat.set(rep, rep); }
+    const m = new THREE.MeshStandardMaterial({
+      map: c.diffuse, normalMap: c.normal, roughnessMap: c.arm,
+      color: tint, roughness: 1, metalness: 0, envMapIntensity: 0.7, ...extra,
+    });
+    groundMats.push(rememberDay(m));
+    return m;
+  };
+
+  /* The field is displaced by the same function life.js is given, so a sheep
+     standing on a rise is standing on the rise you can see. 140 segments over
+     620 m is 4.4 m a quad; the field's own wavelength is about 30 m, so that
+     resolves it, and 240 segments cost 80,000 triangles a frame (twice, with
+     the shadow pass) to resolve nothing that is there. */
+  const grassMan = kit.manifest.grass;
+  const gl = new THREE.TextureLoader().setPath('assets/');
+  const grassTex = await new Promise(res => gl.load(grassMan.diffuse, tt => {
+    tt.wrapS = tt.wrapT = THREE.RepeatWrapping; tt.colorSpace = THREE.SRGBColorSpace;
+    tt.anisotropy = 8; tt.repeat.set(200, 200); res(tt);
+  }));
+  const geo = new THREE.PlaneGeometry(620, 620, 140, 140);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, groundHeight(p.getX(i), p.getZ(i)) - 0.05);
+  geo.computeVertexNormals();
+  const fieldMat = new THREE.MeshStandardMaterial({
+    map: grassTex, color: 0x5c6340, roughness: 1, metalness: 0, envMapIntensity: 0.5,
+  });
+  groundMats.push(rememberDay(fieldMat));
+  const field = new THREE.Mesh(geo, fieldMat);
+  field.position.set(20, 0, 20);
+  field.receiveShadow = true;
+  scene.add(field);
+
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(196, ROAD_HALF * 2), mk(t.asphalt, 46, 0x9b968e));
+  road.rotation.x = -Math.PI / 2; road.receiveShadow = true;
+  scene.add(road);
+
+  const cross = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, 100), mk(t.asphalt, 26, 0x9b968e));
+  cross.rotation.x = -Math.PI / 2;
+  cross.position.set(CROSS_X, 0.005, -18);
+  cross.receiveShadow = true;
+  scene.add(cross);
+
+  for (const s of [-1, 1]) {
+    const pave = new THREE.Mesh(new THREE.BoxGeometry(196, 0.16, VERGE), mk(t.cobble, 60, 0x55524b));
+    pave.position.set(0, 0.08, s * (ROAD_HALF + VERGE / 2));
+    pave.receiveShadow = true; pave.castShadow = true;
+    scene.add(pave);
+  }
+}
+
+/* ---- the street: twelve buildings, both rows facing the road ------------
+   Straight out of buildings.html's own catalogue and its own placement rule —
+   a building's front is its -Z side, so the row on +Z needs no rotation and
+   the row on -Z is turned to face back across the carriageway. */
+const STREET = [
+  { style: 'townhouse',  palette: 'plaster',   roof: 'gable',   w: 9,  d: 9,  floors: 3 },
+  { style: 'shop',       palette: 'timber',    roof: 'gable',   w: 10, d: 9,  floors: 2 },
+  { style: 'townhouse',  palette: 'brick',     roof: 'mansard', w: 8,  d: 9,  floors: 4 },
+  { style: 'cottage',    palette: 'whitewash', roof: 'hip',     w: 9,  d: 8,  floors: 1 },
+  { style: 'apartment',  palette: 'plaster',   roof: 'mansard', w: 12, d: 10, floors: 5 },
+  { style: 'civic',      palette: 'stone',     roof: 'hip',     w: 13, d: 11, floors: 2 },
+  { style: 'shop',       palette: 'whitewash', roof: 'gable',   w: 9,  d: 9,  floors: 3 },
+  { style: 'townhouse',  palette: 'timber',    roof: 'gable',   w: 8,  d: 9,  floors: 3 },
+  { style: 'apartment',  palette: 'brick',     roof: 'mansard', w: 11, d: 10, floors: 4 },
+  { style: 'industrial', palette: 'brick',     roof: 'flat',    w: 14, d: 12, floors: 2 },
+  { style: 'shop',       palette: 'plaster',   roof: 'gable',   w: 10, d: 9,  floors: 2 },
+  { style: 'tower',      palette: 'stone',     roof: 'flat',    w: 7,  d: 7,  floors: 6 },
+];
+const doorPoints = [];
+let buildings = [];
+
+function buildStreet() {
+  const back = ROAD_HALF + VERGE + 0.4;
+  let xA = -92, xB = -86;
+  STREET.forEach((s, i) => {
+    const rowA = i % 2 === 0;
+    const x = rowA ? xA + s.w / 2 : xB + s.w / 2;
+    const z = rowA ? -(back + s.d / 2) : (back + s.d / 2);
+    const g = kit.make({
+      seed: 300 + i, footprint: [s.w, s.d], floors: s.floors,
+      style: s.style, palette: s.palette, roof: s.roof, lod: 0,
+    });
+    g.position.set(x, 0, z);
+    g.rotation.y = rowA ? Math.PI : 0;   // front is -Z; row A has to turn round
+    scene.add(g);
+    buildings.push(g);
+    /* Where its front door meets the pavement — the walkway stub, and so the
+       place a pedestrian stops and looks. */
+    doorPoints.push([x, 0, rowA ? -back : back]);
+    if (rowA) xA += s.w + 5; else xB += s.w + 5;
+  });
+}
+
+/* ---- the plaza: a paved circle with eight benches round it -------------
+   The benches are real models, and their positions are handed to life.js as
+   the plaza's `seats`. That is the whole contract: this page decides where a
+   bench IS, life.js decides who sits on it. */
+function paveDisc(at, tiles) {
+  const t = kit.tex;
+  const c = {};
+  for (const k of ['diffuse', 'normal', 'arm']) { c[k] = t.cobble[k].clone(); c[k].needsUpdate = true; c[k].repeat.set(tiles, tiles); }
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(at.r, 48),
+    new THREE.MeshStandardMaterial({
+      map: c.diffuse, normalMap: c.normal, roughnessMap: c.arm,
+      color: 0x9a938a, roughness: 1, metalness: 0, envMapIntensity: 0.6,
+    }));
+  groundMats.push(rememberDay(disc.material));
+  disc.rotation.x = -Math.PI / 2;
+  /* Four centimetres up, not three: the market square lies ON the side street's
+     asphalt, and at the same height as the plaza it z-fought the carriageway
+     across the whole disc. */
+  disc.position.set(at.x, 0.04, at.z);
+  disc.receiveShadow = true;
+  scene.add(disc);
+  return disc;
+}
+
+/* A ring of benches round a paved circle, in life.js's [x, y, z, yaw] form. */
+function ringOfSeats(at, n, inset) {
+  const seats = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + 0.2;
+    const r = at.r - inset;
+    seats.push([at.x + Math.cos(a) * r, 0.02, at.z + Math.sin(a) * r, a + Math.PI / 2]);
+  }
+  return seats;
+}
+
+function buildPlaza() {
+  paveDisc(PLAZA, 14);
+  return ringOfSeats(PLAZA, 8, 2.2);
+}
+
+/* The pedestrian zone on the side street. Same paving, fewer benches, and the
+   only visible difference from the plaza is that a road runs into it and stops. */
+function buildMarket() {
+  paveDisc(PZONE, 13);
+  return ringOfSeats(PZONE, 4, 2.6);
+}
+
+/* ---- trees, benches and the pasture fence -------------------------------
+   All three are pack models, placed deterministically. The fence is what
+   makes the pasture read as a field rather than as grass that happens to have
+   animals standing on it. */
+/* Everything solid this PAGE puts on the ground, in life.js's own obstacle
+   form. The module places and therefore knows about its own props and the
+   benches it was handed; the tree trunks and the pasture fence are the page's
+   meshes and it had no way to hear about them, which is why a pedestrian could
+   walk straight through the rail in Beri's screenshot. Collected while they are
+   built and handed over in one call before populate(). */
+const hostObstacles = [];
+
+async function buildTreesAndFences() {
+  const loader = new GLTFLoader().setPath('assets/');
+  const load = p => new Promise(res => loader.load(p, g => res(g.scene), undefined, () => res(null)));
+  const [tree, treeLow, bench] = await Promise.all([
+    load(kit.manifest['model.treeReal'].path),
+    load(kit.manifest['model.tree'].path),
+    load(kit.manifest['model.bench'].path),
+  ]);
+  let seed = 4242;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+
+  const prep = obj => {
+    obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    return obj;
+  };
+
+  if (tree) {
+    prep(tree);
+    /* Round the plaza and along the pasture fence. The parrots perch in these:
+       life.js finds its perches by raycasting down through whatever is in the
+       scene, so a tree added here becomes somewhere a bird can sit. */
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.4;
+      const t2 = tree.clone(true);
+      t2.position.set(PLAZA.x + Math.cos(a) * (PLAZA.r + 4.5), 0, PLAZA.z + Math.sin(a) * (PLAZA.r + 4.5));
+      t2.rotation.y = rnd() * Math.PI * 2;
+      t2.scale.setScalar(1.5 + rnd() * 0.6);
+      scene.add(t2);
+      /* The trunk, not the canopy: a person walks under leaves and into wood. */
+      hostObstacles.push({ x: t2.position.x, z: t2.position.z, r: 0.55 });
+    }
+  }
+
+  if (treeLow) {
+    prep(treeLow);
+    treeLow.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      const m = o.material.clone();
+      if (/leaf/i.test(m.name)) m.color.setHex(0x4c6b34);
+      else if (/bark|wood/i.test(m.name)) m.color.setHex(0x5c4632);
+      m.roughness = 0.95;
+      m.envMapIntensity = 0.5;
+      o.material = m;
+    });
+    for (let i = 0; i < 18; i++) {
+      let x = 32 + rnd() * 70, z = 52 + rnd() * 62;
+      if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 7) { x += 26; z += 18; }
+      const t2 = treeLow.clone(true);
+      t2.position.set(x, groundHeight(x, z), z);
+      t2.rotation.y = rnd() * Math.PI * 2;
+      t2.scale.setScalar(3.4 + rnd() * 1.8);
+      scene.add(t2);
+      hostObstacles.push({ x, z, r: 0.7 });
+    }
+  }
+
+  if (bench) {
+    prep(bench);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.2;
+      const r = PLAZA.r - 2.2;
+      const b = bench.clone(true);
+      b.position.set(PLAZA.x + Math.cos(a) * r, 0.02, PLAZA.z + Math.sin(a) * r);
+      b.rotation.y = -a + Math.PI / 2;
+      scene.add(b);
+    }
+  }
+
+  /* The fence: posts and two rails, merged into two instanced draws. */
+  const post = new THREE.BoxGeometry(0.14, 1.25, 0.14);
+  const rail = new THREE.BoxGeometry(2.6, 0.1, 0.07);
+  const wood = new THREE.MeshStandardMaterial({ color: 0x6b5a45, roughness: 0.95, metalness: 0 });
+  const line = [];
+  for (let i = 0; i < PASTURE.length; i++) {
+    const [ax, az] = PASTURE[i], [bx, bz] = PASTURE[(i + 1) % PASTURE.length];
+    const len = Math.hypot(bx - ax, bz - az);
+    const n = Math.round(len / 2.6);
+    for (let k = 0; k < n; k++) line.push([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n, Math.atan2(bx - ax, bz - az)]);
+  }
+  const posts = new THREE.InstancedMesh(post, wood, line.length);
+  const rails = new THREE.InstancedMesh(rail, wood, line.length * 2);
+  posts.castShadow = rails.castShadow = true;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+  const up = new THREE.Vector3(0, 1, 0);
+  line.forEach(([x, z, yaw], i) => {
+    const y = groundHeight(x, z);
+    q.setFromAxisAngle(up, yaw);
+    posts.setMatrixAt(i, m.compose(v.set(x, y + 0.62, z), q, one));
+    q.setFromAxisAngle(up, yaw + Math.PI / 2);
+    rails.setMatrixAt(i * 2, m.compose(v.set(x, y + 1.05, z), q, one));
+    rails.setMatrixAt(i * 2 + 1, m.compose(v.set(x, y + 0.58, z), q, one));
+  });
+  scene.add(posts, rails);
+  /* And the fence itself, as a run of segments — one per side of the pasture
+     polygon, which is the whole rail in four entries rather than in a hundred
+     and forty posts. This is Beri's report A: the railing was drawn and was
+     never in the walk layer. */
+  for (let i = 0; i < PASTURE.length; i++) {
+    const [ax, az] = PASTURE[i], [bx2, bz2] = PASTURE[(i + 1) % PASTURE.length];
+    hostObstacles.push({ x1: ax, z1: az, x2: bx2, z2: bz2, r: 0.14 });
+  }
+}
+
+/* ---- the legend: what each population stands for ------------------------ */
+function writeLegend() {
+  const s = life.stats();
+  document.getElementById('legend-body').innerHTML =
+    `<b>${s.humans}</b> people &mdash; residents, f(sessions) &nbsp;·&nbsp; ` +
+    `<b>${s.cars}</b> vehicles &mdash; traffic, f(link weight), split 4:1 across two roads &nbsp;·&nbsp; ` +
+    `<b>${s.robots}</b> robots &mdash; the live agents, each carrying its task tag &nbsp;·&nbsp; ` +
+    `<b>${s.sheep + s.cows}</b> in the pasture &mdash; dormant projects &nbsp;·&nbsp; ` +
+    `<b>${s.parrots}</b> parrots &mdash; the Wild Moments continent, flying in pairs &nbsp;·&nbsp; ` +
+    `<b>${s.birds}</b> birds<br>` +
+    `${s.junctions} junction${s.junctions === 1 ? '' : 's'} · ${s.walkNodes} pavement nodes · ` +
+    `${s.shops} shop doors, ${s.homes} front doors · ${s.crossings} zebra crossings · ` +
+    `${s.carFree} pedestrian zone · ${s.seats} benches · ${s.perches} roosts found by raycast`;
+}
+
+/* ---- day and night ------------------------------------------------------ */
+function applyNight(t) {
+  night = t;
+  kit.setNight(t);
+  life.setNight(t);
+  kit.setEnvironment(t > 0.5 ? kit.envNight : kit.envDusk);
+  scene.environment = t > 0.5 ? kit.envNight : kit.envDusk;
+  scene.background = t > 0.5 ? (skyNight || skyDusk) : skyDusk;
+  scene.backgroundIntensity = t > 0.5 ? 0.30 : 0.62;
+  sun.intensity = 2.6 * (1 - t) + 0.10 * t;
+  sun.color.setHex(t > 0.5 ? 0x9fb0d8 : 0xffd8ab);
+  fill.intensity = 0.55 * (1 - t) + 0.16 * t;
+  scene.fog.color.setHex(t > 0.5 ? 0x14131c : 0x2b2733);
+  /* The bloom threshold has to come down at night or the lit windows and the
+     headlights do not bloom at all; during the day the whole sky sits above
+     0.86 and a low threshold veils the street in milk. */
+  for (const m of groundMats) m.envMapIntensity = t > 0.5 ? m.userData.dayEnv * 0.18 : m.userData.dayEnv;
+  bloom.threshold = t > 0.5 ? 0.58 : 1.0;
+  bloom.strength = t > 0.5 ? 0.42 : 0.20;
+  document.getElementById('r-mode').textContent = t > 0.5 ? 'night' : 'day';
+}
+
+/* ---- walking the camera ------------------------------------------------- */
+const keys = new Set();
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  keys.add(k);
+  if (k === 'n') applyNight(night > 0.5 ? 0 : 1);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+
+const fwd = new THREE.Vector3(), right = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+function walk(dt) {
+  const sp = (keys.has('shift') ? 30 : 10) * dt;
+  const d = new THREE.Vector3();
+  let moved = false;
+  camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+  right.crossVectors(fwd, up).normalize();
+  if (keys.has('w')) { d.add(fwd); moved = true; }
+  if (keys.has('s')) { d.sub(fwd); moved = true; }
+  if (keys.has('a')) { d.sub(right); moved = true; }
+  if (keys.has('d')) { d.add(right); moved = true; }
+  if (keys.has('q')) { d.y += 1; moved = true; }
+  if (keys.has('e')) { d.y -= 1; moved = true; }
+  if (moved) {
+    d.normalize().multiplyScalar(sp);
+    camera.position.add(d);
+    controls.target.add(d);
+  }
+}
+
+/* ---- the frame ---------------------------------------------------------- */
+let last = performance.now(), acc = [], hudAt = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  renderer.info.reset();
+  acc.push(dt); if (acc.length > 90) acc.shift();
+  walk(dt);
+  controls.update();
+  if (life) life.update(dt, camera);
+  composer.render();
+  if (now - hudAt > 400) {
+    hudAt = now;
+    const s = life ? life.stats() : null;
+    document.getElementById('r-fps').textContent = Math.round(fps());
+    document.getElementById('r-calls').textContent = renderer.info.render.calls;
+    document.getElementById('r-tris').textContent = (renderer.info.render.triangles / 1000).toFixed(0) + 'k';
+    if (s) {
+      document.getElementById('r-anim').textContent = s.nearestAnim;
+      document.getElementById('r-actors').textContent = s.actors;
+    }
+  }
+}
+const fps = () => (acc.length ? acc.length / acc.reduce((a, b) => a + b, 0) : 0);
+
+
+/* ---- the on-screen controls -------------------------------------------
+   The chips in the bottom-right corner looked like buttons and did nothing
+   when they were clicked (Beri, 2026-09-07). They are buttons now, and every
+   one of them calls exactly what the key it shows calls, so there is one
+   behaviour and not two. `orbit` and `walk` are a MODE pair — the one that
+   is on carries `aria-pressed="true"`, which is also what a screen reader
+   reads and what the click test asserts. */
+let camMode = 'orbit';
+function setCamMode(m) {
+  camMode = m;
+  /* Walk mode hands the mouse back: dragging in the middle of walking somewhere
+     is how you lose the horizon. The keys work in both. */
+  controls.enableRotate = (m === 'orbit');
+  for (const b of document.querySelectorAll('#keys .chip[data-act="orbit"], #keys .chip[data-act="walk"]')) {
+    const on = b.dataset.act === (m === 'orbit' ? 'orbit' : 'walk');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.classList.toggle('on', on);
+  }
+}
+/* One step of the wheel, as a number rather than as a synthetic event: a
+   fraction of the distance to whatever the camera is looking at, so it is the
+   same gesture near a shopfront and out over the field. */
+function nudgeZoom(dir) {
+  const t = controls.target;
+  const d = camera.position.clone().sub(t);
+  const k = dir > 0 ? 0.82 : 1.22;
+  const len = Math.min(controls.maxDistance || 1e6, Math.max(controls.minDistance || 0.1, d.length() * k));
+  camera.position.copy(t).add(d.normalize().multiplyScalar(len));
+  controls.update();
+}
+/* Up and down move the target with the camera, exactly as Q and E do. */
+function nudgeY(dy) {
+  camera.position.y += dy;
+  controls.target.y += dy;
+  controls.update();
+}
+document.getElementById('keys').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  switch (b.dataset.act) {
+    case 'orbit':    setCamMode('orbit'); break;
+    case 'walk':     setCamMode('walk'); break;
+    case 'zoom-in':  nudgeZoom(1); break;
+    case 'zoom-out': nudgeZoom(-1); break;
+    case 'up':       nudgeY(2); break;
+    case 'down':     nudgeY(-2); break;
+    case 'night':    applyNight(night > 0.5 ? 0 : 1); break;
+  }
+  b.blur();
+});
+setCamMode('orbit');
+/* What the click test reads: the state each chip is supposed to have changed. */
+window.__controls = () => ({
+  mode: camMode, night, rotate: controls.enableRotate,
+  dist: +camera.position.distanceTo(controls.target).toFixed(2),
+  y: +camera.position.y.toFixed(2),
+});
+
+/* =========================================================================
+   THE HARNESS HOOKS
+   The screenshot and frame-rate procedure in docs/RUNBOOK.md drives the page
+   by name. Everything it needs is here and nothing else is global.
+   ========================================================================= */
+window.__ready = () => ready;
+window.__fps = fps;
+/* The module instance itself. The street-plausibility probes below read
+   geometry the stats() summary does not carry — a model's measured length, a
+   lane's tangent at a car's own arc length — and a probe that re-derived those
+   from a summary would be checking its own arithmetic rather than the module's
+   behaviour. */
+window.__life = () => life;
+window.__calls = () => renderer.info.render.calls;
+window.__tris = () => renderer.info.render.triangles;
+window.__counts = () => (life ? life.stats() : null);
+window.__nearestAnim = () => (life ? life.stats().nearestAnim : 0);
+window.__night = t => applyNight(t);
+/* What the frame costs, split by model — the same shape buildings.html's
+   __budget() has, so the two docs' cost tables can be read side by side. */
+window.__budget = () => {
+  const out = { models: {}, calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
+  for (const id in life.models) {
+    const e = life.models[id];
+    out.models[id] = {
+      tris: Math.round(e.tris), farTris: e.farTris ? Math.round(e.farTris) : null,
+      vatKB: e.vatBytes ? Math.round(e.vatBytes / 1024) : null, skinned: !!e.skinned,
+      /* The animal realism pass, as numbers: what the pack shipped, what the
+         near tier is after two rounds of subdivision, and what was welded on.
+         `farTris` beside it is the check that the LOD ladder did NOT move. */
+      sub: e.trisBefore ? { before: e.trisBefore, after: Math.round(e.tris),
+                            shells: e.shells || 0, eyes: !!e.eyeBalls,
+                            reshaped: !!e.reshaped } : null,
+    };
+  }
+  return out;
+};
+/* Where the traffic actually IS. A vehicle a metre off the carriageway is
+   invisible in a screenshot taken down the street and obvious in this list, and
+   the model table in docs/LIFE.md is read off it. */
+window.__vehicles = () => life.vehicles.map(v => ({
+  type: v.type, x: +v.pos.x.toFixed(1), z: +v.pos.z.toFixed(1),
+  yaw: +v.yaw.toFixed(2), speed: +v.speed.toFixed(1), turn: v.turn || 0,
+}));
+/* How many rigid instances are on screen at each detail level, and what each
+   costs. The triangle budget in docs/LIFE.md is read off this. */
+window.__probe = () => {
+  const people = life.actors.filter(a => a.kind === 'person');
+  const by = k => people.filter(a => a.errand === k).length;
+  return {
+    lamps: life.lamps.count, blobs: life.blobs.count,
+    perched: life.flock.filter(b => b.parrot && b.landed).length,
+    lying: life.actors.filter(a => a.state === 'lie').length,
+    groups: life.actors.filter(a => a.leader).length,
+    blinking: life.vehicles.filter(v => v.blink).length,
+    turning: life.vehicles.filter(v => v.turn).length,
+    /* The errands, as counts. `errand` is where each person is HEADING and
+       `state` is what they are doing this instant, so the two together are the
+       whole behaviour: 30 on their way to a shop, 6 standing at one. */
+    hour: +life.clockHour().toFixed(2),
+    errands: { shop: by('shop'), bench: by('bench'), plaza: by('plaza'), home: by('home') },
+    doing: {
+      walking: people.filter(a => a.state === 'walk').length,
+      atDoor: people.filter(a => a.state === 'pause').length,
+      sitting: people.filter(a => a.state === 'sit').length,
+      lingering: people.filter(a => a.state === 'linger').length,
+      waitingToCross: people.filter(a => a.state === 'wait').length,
+      onACrossing: people.filter(a => a.state === 'cross').length,
+    },
+    yielding: life.vehicles.filter(v => v.speed < 4 && (life.crossings || []).some(
+      c => c.pos.distanceTo(v.pos) < 16 && (c.occupied || c.waiting))).length,
+    overlap: life.stats().overlap,
+  };
+};
+/* The pedestrian zones, so the harness can check that no vehicle is inside one.
+   Read off life.js's own list rather than the page's constants: the point of
+   the check is what the LIBRARY did with the declaration. */
+window.__zones = () => life.carFree.map(z => ({ x: z.x, z: z.z, r: z.r }));
+/* Start the accumulated probes again — the overlap rate is measured over a
+   window, and the window has to start after the crowd has settled. */
+window.__resetProbes = () => { life.resetProbes(); return true; };
+
+/* =========================================================================
+   STREET PLAUSIBILITY — the four gates the 2026-09-07 traffic pass is judged
+   on. Each is one expression over the state the frame actually drew, so none
+   of them can be satisfied by the module asserting anything about itself.
+   ========================================================================= */
+
+/* Do two vehicles share any ground? A 2D separating-axis test between their
+   oriented footprints — a circle test would either miss a car alongside a bus
+   or invent overlaps between two lanes. Read off `halfLength`/`halfWidth`,
+   which life.js measures off each model rather than deriving from `face`. */
+const obbHit = (a, b) => {
+  const box = v => {
+    const e = life.models[v.type];
+    const c = Math.cos(v.yaw), s = Math.sin(v.yaw);
+    /* +Z is forward for every model once `face` has turned it. */
+    return { x: v.pos.x, z: v.pos.z, fx: s, fz: c, rx: c, rz: -s,
+             hl: e.halfLength, hw: e.halfWidth };
+  };
+  const A = box(a), B = box(b);
+  const dx = B.x - A.x, dz = B.z - A.z;
+  for (const [ax, az] of [[A.fx, A.fz], [A.rx, A.rz], [B.fx, B.fz], [B.rx, B.rz]]) {
+    const d = Math.abs(dx * ax + dz * az);
+    const ra = Math.abs(A.fx * ax + A.fz * az) * A.hl + Math.abs(A.rx * ax + A.rz * az) * A.hw;
+    const rb = Math.abs(B.fx * ax + B.fz * az) * B.hl + Math.abs(B.rx * ax + B.rz * az) * B.hw;
+    if (d > ra + rb) return false;      // a gap on this axis: they are apart
+  }
+  return true;
+};
+window.__overlaps = () => {
+  const v = life.vehicles, out = [];
+  for (let i = 0; i < v.length; i++)
+    for (let k = i + 1; k < v.length; k++)
+      if (obbHit(v[i], v[k])) out.push([v[i].type, v[k].type,
+        +v[i].pos.x.toFixed(1), +v[i].pos.z.toFixed(1)]);
+  return out;
+};
+
+/* |heading − direction of travel|, in degrees, FINITE-DIFFERENCED off the
+   positions two frames drew. Comparing `yaw` to the lane tangent instead would
+   be checking life.js's arithmetic against itself — it sets one from the other
+   — and reads 0.00° even on the build whose buses drove sideways. This reads
+   what the eye reads: is the vehicle pointing where it is going. */
+const _prev = new Map();
+window.__headingErr = () => {
+  let worst = 0, wraps = 0; const bad = [];
+  for (const v of life.vehicles) {
+    const p = _prev.get(v);
+    _prev.set(v, { x: v.pos.x, z: v.pos.z, yaw: v.yaw });
+    if (!p) continue;
+    const dx = v.pos.x - p.x, dz = v.pos.z - p.z;
+    const moved = Math.hypot(dx, dz);
+    if (moved < 0.02) continue;                    // stopped: no direction to have
+    /* A lane is a LOOP — life.js has always recycled a car off the far end of
+       a road back onto its near end — so one frame in every lap the car moves
+       the whole length of the street and the finite difference reads 180°.
+       That is the wrap, not a heading error, and it is counted separately
+       rather than folded into the gate it would otherwise fail on its own.
+       Nothing in this pass introduced it and nothing in this pass removes it;
+       see docs/LIFE.md, "known limits". */
+    if (moved > 20) { wraps++; continue; }
+    /* The chord between two frames is the tangent at the MIDDLE of the motion,
+       not at its end — on a straight road those are the same angle and this
+       changes nothing, but through a junction arc they differ by half the
+       angle the car swept, and a single long frame (a hitch: one in 600 here)
+       swept enough of a 90° turn to read 64° against the end yaw alone. So the
+       comparison is against the mid-angle of the two yaws the two frames were
+       DRAWN at, which is still two numbers the probe took off the screen and
+       still fails a bus that is genuinely pointing sideways. */
+    let mid = p.yaw + (((v.yaw - p.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * 0.5;
+    let d = ((mid - Math.atan2(dx, dz) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    d = Math.abs(d) * 180 / Math.PI;
+    if (d > worst) worst = d;
+    if (d > 8) bad.push([v.type, +d.toFixed(1), +v.speed.toFixed(1), !!v.arc]);
+  }
+  return { worst: +worst.toFixed(2), bad, wraps };
+};
+
+/* Anyone standing on the carriageway who is not on a crossing. `__life()` is
+   asked for the lane geometry rather than the page's own ROAD_HALF, because
+   the point of the gate is what the LIBRARY did with the declaration. */
+window.__pedOnRoad = () => {
+  const out = [];
+  for (const a of life.actors) {
+    if (a.kind !== 'person' || a.state === 'cross') continue;
+    if (life._onCarriageway(a.pos)) out.push([a.id, a.state, +a.pos.x.toFixed(1), +a.pos.z.toFixed(1)]);
+  }
+  return out;
+};
+
+/* Every pedestrian capsule that is inside something solid, this instant, and
+   the accumulated rate beside it. Beri's report A is one number: a walker
+   through a pavement railing, and people through parked and moving cars.
+
+   The list is built from the library's own map — `obstacleClearance()` reads
+   the grid `_buildObstacles()` filled from the statics, the benches and the
+   host's railings, `vehicleClearance()` reads the boxes rebuilt this frame —
+   so this probe cannot pass by measuring a different world from the one the
+   projection ran on. Negative is INSIDE; `worst` is the deepest, in metres. */
+window.__penetrations = () => {
+  const list = [];
+  for (const a of life.actors) {
+    if (a.kind !== 'person' || a.crash) continue;
+    const s = life.obstacleClearance(a.pos.x, a.pos.z) - 0.45;
+    const v = life.vehicleClearance(a.pos.x, a.pos.z);
+    const d = Math.min(s, v);
+    if (d < -1e-3) {
+      list.push([a.id, a.state, +a.pos.x.toFixed(1), +a.pos.z.toFixed(1),
+                 +d.toFixed(3), s <= v ? 'static' : 'vehicle']);
+    }
+  }
+  const p = life.stats().penetration;
+  return { now: list.length, list, rate: p.perSecond, peak: p.peak,
+           worst: p.worst, frames: p.frames, seconds: p.seconds,
+           obstacles: life.obstacles.length, edgesCut: life.edgesCut || 0 };
+};
+
+/* Which models have wheels that can turn at all, and which are one welded
+   lump. The traffic table in docs/LIFE.md is read off this — it is the answer
+   to "wheels must turn" and it is a property of the FILES, not of the code. */
+window.__wheels = () => {
+  const out = {};
+  for (const id in life.models) {
+    const e = life.models[id];
+    if (!e.spec || e.spec.tris === undefined) continue;
+    out[id] = { separableWheels: false, source: 'hunyuan, one node one primitive' };
+  }
+  out.ambulance = life.ambWheels
+    ? { separableWheels: true, nodes: life.ambWheels.map(w => w.name),
+        radius: +life.ambWheelRadius.toFixed(3),
+        spin: life.accident && life.accident.amb ? +(life.accident.amb.spin || 0).toFixed(3) : null,
+        rate: life.accident && life.accident.amb ? +(life.accident.amb.wheelRate || 0).toFixed(3) : null }
+    : { separableWheels: true, loaded: false };
+  return out;
+};
+
+/* The accident, on demand. This is a VERIFICATION hook and nothing on this
+   page calls it by itself: an accident on this street happens only when a host
+   reports a real error, and life.html has no errors to report. It hands
+   reportError() the same shape city.js will — see docs/HANDOFF.md. */
+window.__accident = (label, at) => {
+  const A = life.reportError({ label: label || 'tool_end:is_error', at });
+  return A ? { staged: true, label: A.label, why: A.why || null,
+               victim: A.victim ? A.victim.id : null,
+               /* WHO was hit. The robot is the default because it is the
+                  data-true one, but since 2026-09-07 a pedestrian standing
+                  closer to the impact point is the one knocked — "it throws
+                  whoever stepped into its path" — so the gate has to be able
+                  to read the species and not only the index. */
+               kind: A.victim ? A.victim.kind : null,
+               victimDist: A.victim ? +A.victim.pos.distanceTo(A.at).toFixed(2) : null,
+               car: A.car ? A.car.type : null,
+               x: +A.at.x.toFixed(1), z: +A.at.z.toFixed(1) }
+           : { staged: false, why: 'one already in flight, or nothing to stage it on' };
+};
+window.__accidentState = () => {
+  const A = life.accident;
+  if (!A) return null;
+  return { stage: A.stage, t: +A.t.toFixed(1), label: A.label,
+           victimLean: A.victim.crash ? +A.victim.crash.lean.toFixed(2) : null,
+           victimStage: A.victim.crash ? A.victim.crash.stage : null,
+           carSpeed: A.car ? +A.car.speed.toFixed(1) : null,
+           carAskew: A.car ? +A.car.askew.toFixed(2) : null,
+           hazard: !!(A.car && A.car.hazard),
+           ambulance: A.amb ? { s: +A.amb.s.toFixed(1), speed: +A.amb.speed.toFixed(1),
+                                arrived: A.amb.arrived, visible: !!(life.ambGroup && life.ambGroup.visible) }
+                            : null };
+};
+/* Every vehicle that is inside a car-free plaza. The gate for addPlaza is that
+   this is [], and it is one expression so it cannot be fudged. */
+window.__carsInZone = () => window.__vehicles().filter(v =>
+  life.carFree.some(z => Math.hypot(v.x - z.x, v.z - z.z) < z.r));
+window.__rigidCounts = () => {
+  const out = {};
+  for (const t in life.vehicleMeshes) {
+    const im = life.vehicleMeshes[t];
+    out[t] = { near: im.count, mid: im.mid.count, far: im.far.count,
+               nearTris: Math.round(im.geometry.index.count / 3),
+               midTris: Math.round(im.mid.geometry.index.count / 3),
+               farTris: Math.round(im.far.geometry.index.count / 3) };
+  }
+  return out;
+};
+window.__stand = (x, y, z, tx, ty, tz) => {
+  camera.position.set(x, y, z); controls.target.set(tx, ty, tz); controls.update();
+};
+/* The four named poses the reference shots are taken from. */
+window.__street = () => window.__stand(-99, 2.9, 3.6, -18, 2.4, -0.6);
+window.__plaza = () => window.__stand(PLAZA.x - 19, 4.2, PLAZA.z - 15, PLAZA.x + 2, 1.5, PLAZA.z + 2);
+window.__pasture = () => window.__stand(34, 5.6, 46, 96, 1.0, 92);
+window.__wide = () => window.__stand(-72, 44, 86, 34, 0, 22);
+/* The animal shot: a cow with the two sheep nearest it, from four metres —
+   the distance the realism pass is judged at. Computed and not typed, because
+   the herd's positions come out of the seeded placement inside the pasture
+   polygon, and a hard-coded camera would drift the day anyone changes a count. */
+window.__animals = () => {
+  const herd = life.actors.filter(a => a.kind === 'grazer');
+  const cows = herd.filter(a => a.model === 'animal.cow');
+  const flock = herd.filter(a => a.model === 'animal.sheep');
+  if (!cows.length) return null;
+  let best = null;
+  /* Both the cow AND the bearing are searched. One fixed three-quarter-front
+     bearing photographed a good cow with its two sheep behind the lens every
+     time; scoring nine bearings per cow finds the one camera position that has
+     the cow's face and two sheep in the same frame, and the bias term keeps the
+     search from settling for a rear view when a front one would also do. */
+  for (const cow of cows) {
+    const near = flock.slice()
+      .sort((a, b) => a.pos.distanceTo(cow.pos) - b.pos.distanceTo(cow.pos)).slice(0, 2);
+    if (near.length < 2) continue;
+    for (let k = -4; k <= 4; k++) {
+      const bearing = k * 0.42;                      // +/- 96 degrees off the nose
+      const a = cow.yaw + bearing;
+      const eye = cow.pos.clone()
+        .add(new THREE.Vector3(Math.sin(a), 0, Math.cos(a)).multiplyScalar(4.0));
+      const view = cow.pos.clone().sub(eye).setY(0).normalize();
+      /* How much of the two sheep this camera would see: in front of the lens,
+         inside thirty metres, and nearer is better. */
+      let seen = 0;
+      for (const sh of near) {
+        const to = sh.pos.clone().sub(eye).setY(0);
+        const d = to.length();
+        to.divideScalar(Math.max(1e-3, d));
+        if (to.dot(view) > 0.45 && d < 30) seen += 1 + (30 - d) / 30;
+      }
+      /* ...minus how far round the back this bearing is. A cow photographed
+         from behind is not a cow being judged. */
+      const score = seen - Math.abs(bearing) * 0.55;
+      if (!best || score > best.score) best = { cow, eye, score };
+    }
+  }
+  if (!best) return null;
+  return window.__stand(best.eye.x, best.cow.pos.y + 1.45, best.eye.z,
+                        best.cow.pos.x, best.cow.pos.y + 0.85, best.cow.pos.z);
+};
+/* The Hunyuan herd, framed the same way __animals() frames the rigged one: a
+   standing cow with the two standing sheep nearest it, from four metres. The
+   positions come out of the seeded placement inside the pasture polygon, so a
+   typed camera would drift the day anyone changes a count. */
+window.__herd = () => {
+  const cows = life.props.filter(p => p.type === 'st.cow');
+  const flock = life.props.filter(p => p.type === 'st.sheep');
+  if (!cows.length) return null;
+  let best = null;
+  for (const cow of cows) {
+    const near = flock.slice()
+      .sort((a, b) => a.pos.distanceTo(cow.pos) - b.pos.distanceTo(cow.pos)).slice(0, 2);
+    if (near.length < 2) continue;
+    for (let k = -4; k <= 4; k++) {
+      const bearing = k * 0.42;
+      const a = cow.yaw + bearing;
+      const eye = cow.pos.clone()
+        .add(new THREE.Vector3(Math.sin(a), 0, Math.cos(a)).multiplyScalar(4.2));
+      const view = cow.pos.clone().sub(eye).setY(0).normalize();
+      let seen = 0;
+      for (const sh of near) {
+        const to = sh.pos.clone().sub(eye).setY(0);
+        const d = to.length();
+        to.divideScalar(Math.max(1e-3, d));
+        if (to.dot(view) > 0.45 && d < 30) seen += 1 + (30 - d) / 30;
+      }
+      const score = seen - Math.abs(bearing) * 0.55;
+      if (!best || score > best.score) best = { cow, eye, score };
+    }
+  }
+  if (!best) return null;
+  return window.__stand(best.eye.x, best.cow.pos.y + 1.55, best.eye.z,
+                        best.cow.pos.x, best.cow.pos.y + 0.9, best.cow.pos.z);
+};
+/* Every static, by type and position. A prop that was never placed is
+   invisible in a screenshot and obvious in this list — the same reason
+   __vehicles() exists. */
+window.__props = () => {
+  const by = {};
+  for (const p of life.props) (by[p.type] = by[p.type] || []).push([+p.pos.x.toFixed(1), +p.pos.z.toFixed(1)]);
+  /* The dogs by where their OWNER is standing this instant — a dog is the one
+     static model here that moves, so a position is the only way to look at it. */
+  return { dogs: life.dogs.map(g => [+g.owner.pos.x.toFixed(1), +g.owner.pos.z.toFixed(1)]), byType: by };
+};
+/* Stand `d` metres off one model's three-quarter front. The realism pass is a
+   claim about what a mesh looks like CLOSE, and the only way to check that
+   claim on a species the reference shots do not frame is to be able to walk up
+   to one. `__closeUp('animal.sheep')` is how the sheep in the doc's table was
+   looked at. */
+window.__closeUp = (model, d = 2.6) => {
+  const a = life.actors.find(x => x.model === model);
+  if (!a) return null;
+  const b = a.yaw + 0.75;
+  const eye = a.pos.clone().add(new THREE.Vector3(Math.sin(b), 0, Math.cos(b)).multiplyScalar(d));
+  const h = (life.models[model] ? life.models[model].height : 1.6) * 0.55;
+  return window.__stand(eye.x, a.pos.y + h * 1.6, eye.z, a.pos.x, a.pos.y + h, a.pos.z);
+};
+
+boot().then(() => requestAnimationFrame(frame)).catch(err => {
+  document.getElementById('boot').innerHTML =
+    '<p>The pack did not load: ' + err.message + '</p>';
+  throw err;
+});
+</script>
+
+<!-- === WDM-SEAL (body) — the 1px signature. Inherits currentColor, so it sits on any footer. === -->
+<style>
+/* The seal is a signature, not a badge: it stays under 20% until you look for it.
+   difference-blend, NOT currentColor: inheriting the footer's text colour assumed the
+   footer's text always contrasts with whatever is painted at the very bottom of the
+   page. On a dark decorative panel that runs to the page edge it did not, and the mark
+   vanished (cafe-fundstueck desktop, 2026-08-21). Difference against white is contrast
+   by construction, so it works on cream, near-black and mid-brown alike. */
+/* Bottom-LEFT, not the conventional bottom-right an artist would sign: the demos put a
+   fixed WhatsApp button in the right corner, and it covered the seal completely
+   (carmen-2, 2026-08-21). The left corner is the one nothing floats over.
+   30% and not 20%: difference-blend is weakest against mid-tones, and at 20% a warm tan
+   footer measured only 9 RGB of separation - under the 12 the mark needs to be seen. */
+.wdm-seal{display:block;text-align:left;padding:0 clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* On paper the mark is unreadable, so print spells the studio out instead. */
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+/* Every other element on this page is position:fixed, so the seal is the only
+   thing left in normal flow and would land in the top-left corner. Pinned. */
+.wdm-seal{position:fixed;left:0;bottom:0;z-index:5}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

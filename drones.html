@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drones — the ORNIS fleet, seven craft, seven jobs</title>
+<meta name="description" content="Beri's ORNIS quadcopter as the agent and worker craft of werkstadt: seven variants on one airframe, each with a silhouette that says what it is doing, hovering over a procedural street.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0d12'/%3E%3Cg fill='%23d2a62c'%3E%3Ccircle cx='9' cy='11' r='4'/%3E%3Ccircle cx='23' cy='11' r='4'/%3E%3Ccircle cx='9' cy='23' r='4'/%3E%3Ccircle cx='23' cy='23' r='4'/%3E%3Crect x='13' y='15' width='6' height='4'/%3E%3C/g%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="drones.css">
+
+<!-- Three.js pinned to the same version and the same package as world.html and
+     buildings.html, so the pages cannot drift onto different renderers under a
+     screenshot — and so the BuildingKit this page imports is the same one. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+<!-- === WDM-SEAL (head) — studio signature. Skill: ~/.claude/skills/studio-seal === -->
+<meta name="generator" content="Wild Digital Moments - Webdesign-Studio, Tirol - https://digital.wildmoments.at/">
+<meta name="author" content="Wild Digital Moments">
+<link rel="author" type="text/plain" href="humans.txt">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","creator":{"@type":"Organization","name":"Wild Digital Moments","url":"https://digital.wildmoments.at/","founder":{"@type":"Person","name":"Shalom Dov Ber Kirsh"}}}
+</script>
+<!-- === /WDM-SEAL (head) === -->
+</head>
+<body>
+
+<!-- =========================================================================
+     STAGE — the WebGL canvas the fleet and the street live in
+     One canvas. Sixty ORNIS airframes are about 1.4 million triangles; as DOM
+     they would not exist at all.
+     ========================================================================= -->
+<section id="stage" data-sid="stage" data-title="The 3D canvas: seven drone variants hovering over a procedural street">
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <p class="sr-only" id="a11y-status" role="status" aria-live="polite">Loading the fleet.</p>
+</section>
+
+<!-- =========================================================================
+     TAGS — the craft captions, positioned from each craft's tagAnchor
+     ========================================================================= -->
+<div id="tags" data-sid="tags" data-title="Name labels floating over each drone, one per craft"></div>
+
+<!-- =========================================================================
+     MASTHEAD — what the page is, top left
+     ========================================================================= -->
+<header id="masthead" data-sid="masthead" data-title="Title and the one-line description of what is on screen">
+  <h1>Drones</h1>
+  <p>One ORNIS airframe, seven jobs.<br>
+     Read the <b>shape</b>, not the colour — <span id="mode-line">day · 7 craft</span></p>
+</header>
+
+<!-- =========================================================================
+     READOUT — frame rate and draw calls, top right
+     The performance claim in docs/DRONES.md is checkable by looking here.
+     ========================================================================= -->
+<aside id="readout" data-sid="readout" data-title="Live frame rate, draw call count and triangle count">
+  <p><b id="r-fps">--</b> fps<br>
+     <b id="r-calls">--</b> draw calls<br>
+     <b id="r-tris">--</b> triangles<br>
+     <span id="r-lod">LOD --</span></p>
+</aside>
+
+<!-- =========================================================================
+     LEGEND — which craft is which, bottom left
+     ========================================================================= -->
+<aside id="legend" data-sid="legend" data-title="Which drone in the line-up is which task type">
+  <p id="legend-body">…</p>
+</aside>
+
+<!-- =========================================================================
+     KEYS — the controls, bottom right
+     ========================================================================= -->
+<!-- Real buttons, not keycaps that ignore a click. See life.html. -->
+<nav id="keys" data-sid="keys" data-title="Mouse, keyboard and click controls for the showcase" aria-label="View controls">
+  <p><button type="button" class="chip" data-act="orbit" aria-label="Orbit mode: drag to look around"><kbd>drag</kbd>orbit</button> &nbsp; <button type="button" class="chip" data-act="zoom-in" aria-label="Zoom in"><kbd>scroll</kbd>zoom in</button> <button type="button" class="chip" data-act="zoom-out" aria-label="Zoom out"><kbd>scroll</kbd>out</button><br>
+     <button type="button" class="chip" data-act="walk" aria-label="Fly mode: keys move the camera"><kbd>W A S D</kbd>fly</button> &nbsp; <button type="button" class="chip" data-act="up" aria-label="Move the camera up"><kbd>Q</kbd>up</button> <button type="button" class="chip" data-act="down" aria-label="Move the camera down"><kbd>E</kbd>down</button><br>
+     <button type="button" class="chip" data-act="night" aria-label="Toggle day and night"><kbd>N</kbd>day / night</button> <button type="button" class="chip" data-act="work" aria-label="Toggle the work cycle"><kbd>K</kbd>work on / off</button><br>
+     <button type="button" class="chip" data-act="launch" aria-label="Launch or dock the drones now"><kbd>L</kbd>launch / dock now</button></p>
+</nav>
+
+<div id="boot" data-sid="boot" data-title="Loading message, replaced by the canvas once the fleet is built">
+  Building the fleet…
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { BuildingKit } from './buildings.js';
+import { DroneKit, VARIANTS } from './drones.js';
+
+const params = new URLSearchParams(location.search);
+const SEED = parseInt(params.get('seed') || '1', 10) || 1;
+/* `?stress=60` is the frame-rate gate from the brief: sixty craft over the
+   same street, spread deep enough that the LOD bands actually engage — which
+   is the honest way to measure a kit whose whole cost story is its LOD. */
+const STRESS = Math.max(0, parseInt(params.get('stress') || '0', 10) || 0);
+
+/* ---- renderer, scene, camera --------------------------------------------
+   Copied deliberately from buildings.html rather than re-tuned: the two pages
+   are compared side by side, and a different exposure between them would read
+   as a difference in the models. */
+const canvas = document.getElementById('sky');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+/* autoReset off, reset by hand once per frame: with an EffectComposer the last
+   thing drawn is the output pass's fullscreen quad, so an auto-reset counter
+   read after composer.render() reports "1 draw call" for the whole scene. */
+renderer.info.autoReset = false;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x2b2733, 140, 900);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.25, 3000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 2;
+controls.maxDistance = 900;
+
+const sun = new THREE.DirectionalLight(0xffd8ab, 2.6);
+sun.position.set(-46, 44, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1536, 1536);
+sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
+sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -50;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 200;
+sun.shadow.bias = -0.0008;
+sun.shadow.normalBias = 0.035;
+scene.add(sun);
+const fill = new THREE.HemisphereLight(0x9fb6d8, 0x3a3128, 0.55);
+scene.add(fill);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth * 0.4, innerHeight * 0.4), 0.24, 0.55, 1.0);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  composer.setSize(innerWidth, innerHeight);
+  bloom.setSize(Math.round(innerWidth * 0.4), Math.round(innerHeight * 0.4));
+});
+
+
+/* =========================================================================
+   THE STREET
+   Eight BuildingKit buildings in two facing rows, so the fleet has something
+   with a known scale under it. A drone alone against a sky has no size at all;
+   a drone level with a third-floor window is unmistakably a metre and a half.
+   ========================================================================= */
+const STREET = [
+  { style: 'townhouse',  palette: 'plaster',   roof: 'gable',   w: 9,  d: 9,  floors: 3 },
+  { style: 'shop',       palette: 'timber',    roof: 'gable',   w: 10, d: 9,  floors: 2 },
+  { style: 'apartment',  palette: 'brick',     roof: 'mansard', w: 12, d: 10, floors: 5 },
+  { style: 'cottage',    palette: 'whitewash', roof: 'hip',     w: 9,  d: 8,  floors: 1 },
+  { style: 'civic',      palette: 'stone',     roof: 'hip',     w: 13, d: 11, floors: 2 },
+  { style: 'townhouse',  palette: 'timber',    roof: 'gable',   w: 8,  d: 9,  floors: 3 },
+  { style: 'industrial', palette: 'brick',     roof: 'flat',    w: 14, d: 12, floors: 2 },
+  { style: 'tower',      palette: 'stone',     roof: 'flat',    w: 7,  d: 7,  floors: 6 },
+];
+const ROAD_HALF = 5.5, VERGE = 3.0;
+
+/* The seven, left to right in the line-up. Order is by where the attachment
+   sits — below, below, below, forward, out, low, above — so a reader sweeping
+   the row sees the mass climb from the belly to the mast. */
+const LINEUP = [
+  ['orchestrator',  {}],
+  ['agent',         { tier: 'sonnet' }],
+  ['worker.read',   {}],
+  ['worker.edit',   {}],
+  ['worker.search', {}],
+  ['worker.shell',  {}],
+  ['worker.net',    {}],
+];
+
+let bkit, dkit, fleet = [], tagEls = [], stressCraft = [];
+let night = 0, working = true, ready = false;
+let skyDusk = null, skyNight = null;
+
+async function boot() {
+  bkit = await BuildingKit.load(renderer, 'assets/manifest.json');
+  bkit.setEnvironment(bkit.envDusk);
+  scene.environment = bkit.envDusk;
+
+  /* A PMREM texture cannot be used as a background, so the raw equirectangulars
+     are loaded again (from the browser cache) purely to be looked at. */
+  const rgbe = new RGBELoader().setPath('assets/');
+  const sky = p => new Promise(res => rgbe.load(p, t => {
+    t.mapping = THREE.EquirectangularReflectionMapping; res(t);
+  }, undefined, () => res(null)));
+  [skyDusk, skyNight] = await Promise.all([sky(bkit.manifest.hdriDusk.path), sky(bkit.manifest.hdriNight.path)]);
+  scene.background = skyDusk;
+  scene.backgroundIntensity = 0.62;
+
+  buildGround();
+  buildStreet();
+
+  /* The drone kit AFTER the buildings, on purpose: `_bakeSprites` renders to a
+     render target with this same renderer, and doing that while BuildingKit is
+     still baking its own LOD1 targets is two render-target swaps interleaved on
+     one renderer — a class of bug that shows up only as a blank sprite. */
+  dkit = await DroneKit.load(renderer, 'assets/manifest.json');
+  dkit.setEnvironment(bkit.envDusk);
+
+  buildFleet();
+  if (STRESS) buildStress(STRESS);
+  applyNight(0);
+  wide();
+
+  ready = true;
+  const b = document.getElementById('boot');
+  b.classList.add('gone');
+  setTimeout(() => { b.hidden = true; }, 700);
+  document.getElementById('a11y-status').textContent =
+    `${fleet.length + stressCraft.length} drones over a street of ${STREET.length} buildings.`;
+}
+
+/* ---- ground -------------------------------------------------------------
+   One cobbled plane. The buildings showcase has kerbs, puddles and weeds; this
+   page does not, and deliberately — the subject here is in the air, and every
+   triangle on the ground is a triangle not spent on the fleet's frame rate. */
+function buildGround() {
+  const t = bkit.manifest.cobble;
+  const load = new THREE.TextureLoader().setPath('assets/');
+  const tex = load.load(t.diffuse), nrm = load.load(t.normal);
+  for (const m of [tex, nrm]) {
+    m.wrapS = m.wrapT = THREE.RepeatWrapping;
+    m.repeat.set(600 / t.metresPerTile, 600 / t.metresPerTile);
+  }
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const g = new THREE.Mesh(
+    new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ map: tex, normalMap: nrm, roughness: 0.94, metalness: 0 })
+  );
+  g.receiveShadow = true;
+  scene.add(g);
+}
+
+function buildStreet() {
+  let xA = -40, xB = -40;
+  STREET.forEach((s, i) => {
+    const rowA = i % 2 === 0;
+    const x = rowA ? xA + s.w / 2 : xB + s.w / 2;
+    const z = rowA ? -(ROAD_HALF + VERGE + s.d / 2) : (ROAD_HALF + VERGE + s.d / 2);
+    const g = bkit.make({
+      seed: SEED * 1000 + i * 37,
+      footprint: [s.w, s.d], floors: s.floors,
+      style: s.style, roof: s.roof, palette: s.palette, lod: 0,
+    });
+    g.position.set(x, 0, z);
+    g.rotation.y = rowA ? Math.PI : 0;
+    scene.add(g);
+    if (rowA) xA += s.w + 2.2; else xB += s.w + 2.2;
+  });
+}
+
+
+/* =========================================================================
+   THE FLEET
+   Eight craft in a line down the middle of the road, evenly spaced, all at the
+   same height — a line-up, so the shot in docs/shots/drones-lineup.png is a
+   comparison and not a scene. Every one of them is `working`, so the beams,
+   lasers, cone and sparks are all on at once and can be told apart.
+   ========================================================================= */
+/* 5.6 m apart and 8 craft is a 39 m row. The line-up camera sits 62 m back, so
+   How many craft fit in one 1440 px frame is arithmetic, not taste. Seven at
+   3.4 m apart is a 20 m row; the line-up camera sits 27 m back covering 24 m,
+   which puts a 0.7x worker at about 67 px wide and the orchestrator at 173 —
+   enough to tell a mast from a turret from a wing, which is the only thing
+   this shot has to prove. The first cut of this line-up carried EIGHT craft
+   (two agent tiers) at 5.6 m and 62 m back: every craft was a 25 px speck and
+   the labels overlapped into a band. The tiers are shown in the stress fleet
+   instead, where there is room for them. */
+const SPACING = 3.2;
+/* Above the ridge of everything on the street except the tower and the
+   apartment block, so the row is seen against sky rather than against brick —
+   a silhouette read against a facade is not a silhouette. */
+/* Above the ridge of the tallest thing on the street (the six-floor tower, ~20 m
+   with its parapet). A silhouette read against a brick facade is not a
+   silhouette — the whole claim of this module is that the OUTLINE carries the
+   meaning, and an outline needs sky behind it to exist at all. */
+const HOVER_Y = 22.5;
+/* The line-up stands 30 m in FRONT of the street, not over the road. The near
+   row of buildings sits at z = +13 with facades 5 m deep, and a camera far
+   enough back to frame eight craft is then behind that row — the first version
+   of this shot had four of the eight craft completely hidden by an apartment
+   block. Ahead of the street, the buildings become the backdrop they should
+   have been, and the craft are seen against facade and sky at once. */
+const LINE_Z = 30;
+const LINE_X = -5;    // the street's own centre, so the backdrop is full
+
+function buildFleet() {
+  const tags = document.getElementById('tags');
+  LINEUP.forEach(([type, opts], i) => {
+    const d = dkit.make(type, { ...opts, seed: SEED * 7 + i });
+    d.position.set(LINE_X - ((LINEUP.length - 1) / 2) * SPACING + i * SPACING, HOVER_Y, LINE_Z);
+    /* Turned to face the camera's usual side of the street. A line-up of craft
+       seen dead-on shows every silhouette at its widest, which is the fairest
+       possible test of the claim this module makes. */
+    d.rotation.y = Math.PI;
+    d.userData.setSpeed(0);
+    scene.add(d);
+    fleet.push(d);
+
+    const el = document.createElement('div');
+    el.className = 'tag';
+    /* Number + name only. The eight craft are 157 px apart in the line-up shot
+       and the descriptions are 300 px wide, so putting the note on the tag made
+       the labels overlap into an unreadable band — it lives in the legend,
+       where there is a whole line for each. */
+    const tier = opts.tier ? ` · ${opts.tier}` : '';
+    el.textContent = `${i + 1} ${VARIANTS[type].label}${tier}`;
+    tags.appendChild(el);
+    tagEls.push(el);
+  });
+
+  document.getElementById('legend-body').innerHTML = LINEUP.map(([type, o], i) => {
+    const v = VARIANTS[type];
+    const c = '#' + new THREE.Color(
+      type === 'agent' ? ({ opus: 0xd2a62c, sonnet: 0xc8cdd4, haiku: 0xb0713a }[o.tier] || 0xc8cdd4) : v.accent
+    ).getHexString();
+    return `<i style="background:${c}"></i><b>${i + 1} ${v.label}</b> — ${v.note}`;
+  }).join('<br>');
+}
+
+/* ---- the stress fleet ---------------------------------------------------
+   `?stress=60`. Spread over 700 m of depth on purpose: at 120 m the kit drops
+   to the decimated airframe and at 400 m to the baked sprite, and a stress test
+   that keeps every craft inside the near band is not testing the LOD, it is
+   avoiding it. The near ones still fly at LOD0 in the same frame. */
+function buildStress(n) {
+  const types = Object.keys(VARIANTS);
+  for (let i = 0; i < n; i++) {
+    const type = types[i % types.length];
+    const d = dkit.make(type, { seed: 900 + i, tier: ['opus', 'sonnet', 'haiku'][i % 3] });
+    /* Ten per rank, six ranks 58 m apart running away from the line-up. The
+       first layout put the ranks 116 m apart and every craft past the second
+       was a sub-pixel dot at the horizon: the LOD counters said 30/30 but the
+       PICTURE proved nothing. At 58 m the near ranks are full airframes, the
+       middle ranks are the decimated tier and the far ranks are sprites, all
+       in one frame — which is the only way to see whether the tiers match. */
+    const row = Math.floor(i / 10);
+    d.position.set(-42 + (i % 10) * 8.6, 9 + (i % 4) * 4.6, 14 - row * 58);
+    d.rotation.y = Math.PI + (i % 5) * 0.22;
+    d.userData.setSpeed(1.4 + (i % 6) * 0.8);
+    d.userData.setWorking(i % 3 === 0);
+    scene.add(d);
+    stressCraft.push(d);
+  }
+}
+
+
+/* =========================================================================
+   THE LAUNCH / DOCK SEQUENCE
+   `agent_start` and `agent_end` in the real app are a craft appearing and a
+   craft going home, and the brief asks the showcase to loop that. The rightmost
+   craft in the line-up is the one that flies it: it drops to the road, sits
+   with its rotors idling, then climbs back to station.
+   Two things this animation exists to prove, both of which a static shot
+   cannot: the rotors spool DOWN on descent and up on the climb, and the
+   downwash ring appears on the way in rather than being painted on the ground.
+   ========================================================================= */
+const CYCLE = 13.0;              // seconds, one full launch-and-dock
+let cycleT = 3.0;
+let cycleForced = 0;             // `L` nudges the loop instead of waiting for it
+
+function stepCycle(dt) {
+  const d = fleet[fleet.length - 1];
+  if (!d) return;
+  cycleT = (cycleT + dt) % CYCLE;
+  const p = cycleT / CYCLE;
+  /* A quarter down, a quarter parked, a quarter up, a quarter on station.
+     smoothstep on both moves: a drone that starts and stops at full speed is
+     the tell that a position is being lerped rather than flown. */
+  const ease = x => x * x * (3 - 2 * x);
+  let h, speed;
+  if (p < 0.25)       { const k = ease(p / 0.25);       h = HOVER_Y * (1 - k) + 0.32 * k;  speed = 2.2 * (1 - Math.abs(k - 0.5) * 2); }
+  else if (p < 0.45)  { h = 0.32;                                                          speed = 0; }
+  else if (p < 0.72)  { const k = ease((p - 0.45) / 0.27); h = 0.32 * (1 - k) + HOVER_Y * k; speed = 2.6 * (1 - Math.abs(k - 0.5) * 2); }
+  else                { h = HOVER_Y;                                                       speed = 0; }
+  d.position.y = h;
+  d.userData.setSpeed(speed);
+  /* Parked means parked: rotors at idle, no beam, no strobe worth the name. */
+  const docked = h < 0.6;
+  d.userData.targetRpm = docked ? 0.14 : (0.42 + speed * 0.1);
+  if (docked === d.userData.working) d.userData.setWorking(!docked && working);
+}
+
+
+/* =========================================================================
+   NIGHT
+   Same shape as buildings.html: the sun becomes a moon, the environment swaps
+   to the moonlit HDRI, the fog cools, and the bloom threshold drops so the
+   fleet's own nav lights and beams are what carries the frame.
+   ========================================================================= */
+function applyNight(t) {
+  night = t;
+  bkit.setNight(t);
+  dkit.setNight(t);
+  sun.intensity = 2.6 * (1 - t) + 0.18 * t;
+  sun.color.setHex(t > 0.5 ? 0x9fb4e0 : 0xffd8ab);
+  fill.intensity = 0.55 * (1 - t) + 0.16 * t;
+  scene.environment = t > 0.5 ? bkit.envNight : bkit.envDusk;
+  bkit.setEnvironment(scene.environment);
+  dkit.setEnvironment(scene.environment);
+  scene.background = t > 0.5 ? (skyNight || null) : (skyDusk || null);
+  scene.backgroundIntensity = t > 0.5 ? 0.45 : 0.62;
+  scene.fog.color.setHex(t > 0.5 ? 0x0a0c14 : 0x50485a);
+  renderer.setClearColor(t > 0.5 ? 0x0a0c14 : 0x50485a, 1);
+  bloom.strength = 0.24 + 0.55 * t;
+  bloom.threshold = 1.0 - 0.42 * t;
+  updateMode();
+}
+
+function setWorking(on) {
+  working = on;
+  for (const d of fleet) d.userData.setWorking(on);
+  updateMode();
+}
+
+function updateMode() {
+  document.getElementById('mode-line').textContent =
+    `${night > 0.5 ? 'night' : 'day'} · ${fleet.length + stressCraft.length} craft · ${working ? 'working' : 'idle'}`;
+}
+
+
+/* =========================================================================
+   FLYING THE CAMERA
+   Orbit for looking at one craft, WASD for getting somewhere. Same keys as the
+   other two showcases here, because a person who learned buildings.html should
+   not have to learn this page.
+   ========================================================================= */
+const keys = new Set();
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  keys.add(k);
+  if (k === 'n') applyNight(night > 0.5 ? 0 : 1);
+  if (k === 'k') setWorking(!working);
+  if (k === 'l') { cycleT = 0.01; cycleForced++; }
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+
+function fly(dt) {
+  const speed = (keys.has('shift') ? 34 : 13) * dt;
+  const f = new THREE.Vector3(); camera.getWorldDirection(f);
+  const r = new THREE.Vector3().crossVectors(f, camera.up).normalize();
+  const m = new THREE.Vector3();
+  if (keys.has('w')) m.add(f); if (keys.has('s')) m.sub(f);
+  if (keys.has('d')) m.add(r); if (keys.has('a')) m.sub(r);
+  if (keys.has('e')) m.y += 1;  if (keys.has('q')) m.y -= 1;
+  if (m.lengthSq() === 0) return;
+  m.normalize().multiplyScalar(speed);
+  camera.position.add(m);
+  controls.target.add(m);
+}
+
+function wide() {
+  camera.position.set(LINE_X + 30, HOVER_Y + 9, LINE_Z + 40);
+  controls.target.set(LINE_X - 6, HOVER_Y - 3.0, LINE_Z - 14);
+  controls.update();
+}
+
+
+/* =========================================================================
+   THE FRAME
+   ========================================================================= */
+const clock = new THREE.Clock();
+let fps = 0, acc = 0, frames = 0;
+const v = new THREE.Vector3();
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (ready) {
+    fly(dt);
+    stepCycle(dt);
+    controls.update();
+    dkit.update(dt, camera);
+    positionTags();
+  }
+
+  renderer.info.reset();
+  composer.render();
+
+  acc += dt; frames++;
+  if (acc >= 0.5) {
+    fps = Math.round(frames / acc); acc = 0; frames = 0;
+    document.getElementById('r-fps').textContent = fps;
+    document.getElementById('r-calls').textContent = renderer.info.render.calls;
+    document.getElementById('r-tris').textContent = (renderer.info.render.triangles / 1e6).toFixed(2) + ' M';
+    if (ready) {
+      const s = dkit.stats();
+      document.getElementById('r-lod').textContent = `LOD ${s.byLod[0]} / ${s.byLod[1]} / ${s.byLod[2]}`;
+    }
+  }
+}
+
+/* Project each craft's tagAnchor into screen space. This IS the integration
+   the kit is for: a host does exactly this with its own labels, and doing it
+   here rather than faking the tags proves the anchor is usable. */
+function positionTags() {
+  for (let i = 0; i < fleet.length; i++) {
+    fleet[i].userData.tagAnchor.getWorldPosition(v).project(camera);
+    /* Behind the camera, `project` still returns a finite point — mirrored.
+       Without the z test the tags of craft behind you slide across the frame. */
+    const on = v.z < 1 && v.x > -1.3 && v.x < 1.3;
+    tagEls[i].style.display = on ? 'block' : 'none';
+    if (!on) continue;
+    tagEls[i].style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px';
+    /* Odd craft ride 17 px higher. Two labels the same length at the same
+       height with 157 px between their centres touch; staggered, they never do
+       however long the names get. */
+    tagEls[i].style.top = ((-v.y * 0.5 + 0.5) * innerHeight - (i % 2 ? 17 : 0)) + 'px';
+  }
+}
+
+
+/* =========================================================================
+   HARNESS HOOKS
+   The same names buildings.html exposes, so one screenshot script drives both.
+   Everything the reference shots need is here and nothing else is.
+   ========================================================================= */
+
+/* ---- the on-screen controls -------------------------------------------
+   The chips in the bottom-right corner looked like buttons and did nothing
+   when they were clicked (Beri, 2026-09-07). They are buttons now, and every
+   one of them calls exactly what the key it shows calls, so there is one
+   behaviour and not two. `orbit` and `fly` are a MODE pair — the one that
+   is on carries `aria-pressed="true"`, which is also what a screen reader
+   reads and what the click test asserts. */
+let camMode = 'orbit';
+function setCamMode(m) {
+  camMode = m;
+  /* Walk mode hands the mouse back: dragging in the middle of walking somewhere
+     is how you lose the horizon. The keys work in both. */
+  controls.enableRotate = (m === 'orbit');
+  for (const b of document.querySelectorAll('#keys .chip[data-act="orbit"], #keys .chip[data-act="walk"]')) {
+    const on = b.dataset.act === (m === 'orbit' ? 'orbit' : 'walk');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.classList.toggle('on', on);
+  }
+}
+/* One step of the wheel, as a number rather than as a synthetic event: a
+   fraction of the distance to whatever the camera is looking at, so it is the
+   same gesture near a shopfront and out over the field. */
+function nudgeZoom(dir) {
+  const t = controls.target;
+  const d = camera.position.clone().sub(t);
+  const k = dir > 0 ? 0.82 : 1.22;
+  const len = Math.min(controls.maxDistance || 1e6, Math.max(controls.minDistance || 0.1, d.length() * k));
+  camera.position.copy(t).add(d.normalize().multiplyScalar(len));
+  controls.update();
+}
+/* Up and down move the target with the camera, exactly as Q and E do. */
+function nudgeY(dy) {
+  camera.position.y += dy;
+  controls.target.y += dy;
+  controls.update();
+}
+document.getElementById('keys').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  switch (b.dataset.act) {
+    case 'orbit':    setCamMode('orbit'); break;
+    case 'walk':     setCamMode('walk'); break;
+    case 'zoom-in':  nudgeZoom(1); break;
+    case 'zoom-out': nudgeZoom(-1); break;
+    case 'up':       nudgeY(2); break;
+    case 'down':     nudgeY(-2); break;
+    case 'night':    applyNight(night > 0.5 ? 0 : 1); break;
+    case 'work':     setWorking(!working); break;
+    case 'launch':   cycleT = 0.01; cycleForced++; break;
+  }
+  b.blur();
+});
+setCamMode('orbit');
+/* What the click test reads: the state each chip is supposed to have changed. */
+window.__controls = () => ({
+  mode: camMode, night, rotate: controls.enableRotate,
+  dist: +camera.position.distanceTo(controls.target).toFixed(2),
+  y: +camera.position.y.toFixed(2),
+  working, cycleForced,
+});
+
+window.__ready = () => ready;
+window.__fps = () => fps;
+window.__calls = () => renderer.info.render.calls;
+window.__tris = () => renderer.info.render.triangles;
+window.__stats = () => dkit.stats();
+window.__night = t => applyNight(t);
+window.__work = on => setWorking(on);
+window.__wide = () => wide();
+window.__lineup = () => {
+  camera.position.set(LINE_X, HOVER_Y + 0.5, LINE_Z + 21);
+  controls.target.set(LINE_X, HOVER_Y - 0.5, LINE_Z);
+  controls.update();
+  /* Phase 0.85 is the on-station quarter of the launch/dock loop. Without
+     pinning it, whichever craft is flying the cycle is halfway to the road in
+     the line-up shot and the row has a hole in it. */
+  cycleT = 0.85 * CYCLE;
+};
+/* Close enough that one craft fills a third of the frame — the shot that
+   answers "does the ORNIS actually survive being scaled to 0.7?". */
+window.__closeup = (i = 4) => {
+  const p = fleet[i].position;
+  camera.position.set(p.x + 2.6, p.y + 0.9, p.z + 3.4);
+  controls.target.copy(p); controls.update();
+};
+window.__stand = (x, y, z, tx, ty, tz) => { camera.position.set(x, y, z); controls.target.set(tx, ty, tz); controls.update(); };
+/* Freeze the launch/dock loop at a phase, so the docked frame can be captured
+   without racing a thirteen-second cycle. */
+window.__cycle = p => { cycleT = p * CYCLE; };
+/* The scene graph itself, for a harness that needs to ask a question this page
+   did not anticipate — which is every harness, eventually. */
+window.__scene = () => ({ renderer, scene, camera, composer, bkit, dkit, fleet });
+
+/* The frame loop starts only once boot() has RESOLVED, which is not a style
+   choice. Both BuildingKit and DroneKit bake into their own WebGLRenderTargets
+   during load; a composer.render() interleaved with those bakes on the same
+   renderer leaves the EffectComposer's targets in a state it never recovers
+   from, and the symptom is a completely black canvas with zero console errors
+   and a perfectly healthy draw-call count. Calling frame() next to boot()
+   instead of after it cost an hour here. */
+boot().then(() => requestAnimationFrame(frame)).catch(err => {
+  console.error(err);
+  document.getElementById('boot').textContent = 'Failed to build the fleet: ' + err.message;
+});
+</script>
+
+<!-- === WDM-SEAL (body) — the 1px signature. Inherits currentColor, so it sits on any footer. === -->
+<style>
+/* The seal is a signature, not a badge: it stays under 20% until you look for it.
+   difference-blend, NOT currentColor: inheriting the footer's text colour assumed the
+   footer's text always contrasts with whatever is painted at the very bottom of the
+   page. On a dark decorative panel that runs to the page edge it did not, and the mark
+   vanished (cafe-fundstueck desktop, 2026-08-21). Difference against white is contrast
+   by construction, so it works on cream, near-black and mid-brown alike. */
+/* Bottom-LEFT, not the conventional bottom-right an artist would sign: the demos put a
+   fixed WhatsApp button in the right corner, and it covered the seal completely
+   (carmen-2, 2026-08-21). The left corner is the one nothing floats over.
+   30% and not 20%: difference-blend is weakest against mid-tones, and at 20% a warm tan
+   footer measured only 9 RGB of separation - under the 12 the mark needs to be seen. */
+.wdm-seal{display:block;text-align:left;padding:0 clamp(1rem,4vw,3rem) 1.25rem;line-height:0}
+.wdm-seal svg{width:28px;height:28px;color:#fff;opacity:.3;mix-blend-mode:difference;transition:opacity .4s ease,color .4s ease}
+.wdm-seal:hover svg,.wdm-seal:focus-visible svg{opacity:1;mix-blend-mode:normal;color:#D2A62C}
+.wdm-seal span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* On paper the mark is unreadable, so print spells the studio out instead. */
+@media print{.wdm-seal{text-align:center;line-height:1.4}.wdm-seal svg{display:none}.wdm-seal::after{content:"gebaut von Wild Digital Moments - digital.wildmoments.at";font:11px Georgia,serif;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.wdm-seal svg{transition:none}}
+/* Every other element on this page is position:fixed, so the seal is the only
+   thing left in normal flow and would land in the top-left corner. Pinned. */
+.wdm-seal{position:fixed;left:0;bottom:0;z-index:5}
+</style>
+<a class="wdm-seal" href="https://digital.wildmoments.at/" title="gebaut von Wild Digital Moments" rel="author noopener" target="_blank">
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <text x="16" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="currentColor" text-anchor="middle" letter-spacing="-1">W</text>
+    <line x1="6" y1="26" x2="26" y2="26" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+  </svg>
+  <span>gebaut von Wild Digital Moments</span>
+</a>
+<script>console.log("%c W %c gebaut von Wild Digital Moments   https://digital.wildmoments.at/","background:#16130F;color:#D2A62C;font:700 13px Georgia,serif;padding:3px 8px;border-radius:3px","color:#8a8578;font:12px ui-monospace,SFMono-Regular,monospace;padding-left:8px");</script>
+<!-- === /WDM-SEAL (body) === -->
+</body>
+</html>

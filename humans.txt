@@ -1,0 +1,13 @@
+/* TEAM */
+
+  Design & Code: Wild Digital Moments
+  Studio: https://digital.wildmoments.at/
+  Contact: studio.beri [at] wildmoments.at
+  Location: Wenns, Tirol, Austria
+
+/* SITE */
+
+  Name: werkstadt
+  Standards: HTML5, CSS3, Vanilla JavaScript
+  Components: none - handbuilt, no framework, no build step
+  Software: a text editor and too much coffee
