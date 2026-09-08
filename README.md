@@ -50,7 +50,7 @@ redaction those walls carry a notice instead.
 ## Install in 30 seconds
 
 ```
-git clone <repo> && cd werkstadt
+git clone https://github.com/beriki770-ship-it/werkstadt && cd werkstadt
 python assets/fetch_assets.py --release
 python server.py
 ```
@@ -81,7 +81,7 @@ and launchd units to run it at login.
 ### As a Claude Code plugin
 
 ```
-/plugin marketplace add <owner>/<repo>
+/plugin marketplace add beriki770-ship-it/werkstadt
 /plugin install werkstadt@werkstadt
 ```
 

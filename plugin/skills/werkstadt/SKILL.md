@@ -19,7 +19,7 @@ Take the first of these that contains a `server.py`:
 2. `${CLAUDE_PLUGIN_ROOT}/../..` — true when the plugin was installed from a
    clone of the repo itself, which is the normal case
 3. ask the user for the path, and suggest
-   `git clone <repo> werkstadt` if they do not have one yet
+   `git clone https://github.com/beriki770-ship-it/werkstadt werkstadt` if they do not have one yet
 
 Do not guess a third location and do not create one.
 

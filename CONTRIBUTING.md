@@ -3,7 +3,7 @@
 ## Run it
 
 ```
-git clone <repo> && cd werkstadt && python server.py
+git clone https://github.com/beriki770-ship-it/werkstadt && cd werkstadt && python server.py
 ```
 
 Then open http://127.0.0.1:4949/globe.html. The other three pages are `world.html`, `index.html` and `recordings.html`.

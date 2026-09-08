@@ -22,7 +22,7 @@ and a wallpaper mode that Lively paints behind your desktop icons.
 ## Running it
 
 ```
-git clone https://github.com/<your-github-account>/werkstadt && cd werkstadt
+git clone https://github.com/beriki770-ship-it/werkstadt && cd werkstadt
 python assets/fetch_assets.py --release
 python server.py
 ```
@@ -56,7 +56,7 @@ screenshots were taken this way.
 ## As a Claude Code plugin
 
 ```
-/plugin marketplace add <your-github-account>/werkstadt
+/plugin marketplace add beriki770-ship-it/werkstadt
 /plugin install werkstadt@werkstadt
 ```
 

@@ -1597,8 +1597,8 @@ def main_cc0():
 # because it fails as a 404 halfway through a download instead of as a sentence.
 # ---------------------------------------------------------------------------
 
-RELEASE_URL = ""       # e.g. https://github.com/<owner>/werkstadt/releases/download/v1/werkstadt-assets-v1.zip
-RELEASE_SHA256 = ""    # the digest printed beside the zip
+RELEASE_URL = "https://github.com/beriki770-ship-it/werkstadt/releases/download/v0.1.0/werkstadt-assets-v1.zip"       # e.g. https://github.com/<owner>/werkstadt/releases/download/v1/werkstadt-assets-v1.zip
+RELEASE_SHA256 = "b96cc5909c53c4bec1b5c6e8be2e254a6fd702ebf6fde64372007e97d56eee34"    # the digest printed beside the zip
 
 
 def main_release():

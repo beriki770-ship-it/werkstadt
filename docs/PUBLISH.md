@@ -12,7 +12,7 @@ is what creating the repository and the release both need, so no re-auth is
 expected.
 
 Before the first command, decide the owner. Everything below assumes
-`<your-github-account>/werkstadt` — substitute the real account before running
+`beriki770-ship-it/werkstadt` — substitute the real account before running
 anything. If it goes somewhere else, that string changes in step 1, in the
 release URL in step 3 and in the four placeholder edits in step 4.
 
@@ -35,7 +35,7 @@ of it; it is uploaded as a release asset in step 3.
 ## Step 1 — create the repository and push
 
 ```
-gh repo create <your-github-account>/werkstadt --public --source . --push
+gh repo create beriki770-ship-it/werkstadt --public --source . --push
 ```
 
 `--source .` adds the remote and `--push` sends `main`. It does not create a
@@ -64,7 +64,7 @@ gh release create v0.1.0 \
 fixed by the tag and the filename:
 
 ```
-https://github.com/<your-github-account>/werkstadt/releases/download/v0.1.0/werkstadt-assets-v1.zip
+https://github.com/beriki770-ship-it/werkstadt/releases/download/v0.1.0/werkstadt-assets-v1.zip
 ```
 
 The SHA-256 is already computed and lives in
@@ -84,12 +84,12 @@ it stands.
 
 | file | line | now | after |
 |---|---|---|---|
-| `assets/fetch_assets.py` | 1600 | `RELEASE_URL = ""` | `RELEASE_URL = "https://github.com/<your-github-account>/werkstadt/releases/download/v0.1.0/werkstadt-assets-v1.zip"` |
+| `assets/fetch_assets.py` | 1600 | `RELEASE_URL = ""` | `RELEASE_URL = "https://github.com/beriki770-ship-it/werkstadt/releases/download/v0.1.0/werkstadt-assets-v1.zip"` |
 | `assets/fetch_assets.py` | 1601 | `RELEASE_SHA256 = ""` | `RELEASE_SHA256 = "b96cc5909c53c4bec1b5c6e8be2e254a6fd702ebf6fde64372007e97d56eee34"` |
-| `README.md` | 53 | `git clone <repo> && cd werkstadt` | `git clone https://github.com/<your-github-account>/werkstadt && cd werkstadt` |
-| `README.md` | 84 | `/plugin marketplace add <owner>/<repo>` | `/plugin marketplace add <your-github-account>/werkstadt` |
-| `CONTRIBUTING.md` | 6 | `git clone <repo> && cd werkstadt && python server.py` | `git clone https://github.com/<your-github-account>/werkstadt && cd werkstadt && python server.py` |
-| `plugin/skills/werkstadt/SKILL.md` | 22 | `` `git clone <repo> werkstadt` `` | `` `git clone https://github.com/<your-github-account>/werkstadt werkstadt` `` |
+| `README.md` | 53 | `git clone <repo> && cd werkstadt` | `git clone https://github.com/beriki770-ship-it/werkstadt && cd werkstadt` |
+| `README.md` | 84 | `/plugin marketplace add <owner>/<repo>` | `/plugin marketplace add beriki770-ship-it/werkstadt` |
+| `CONTRIBUTING.md` | 6 | `git clone <repo> && cd werkstadt && python server.py` | `git clone https://github.com/beriki770-ship-it/werkstadt && cd werkstadt && python server.py` |
+| `plugin/skills/werkstadt/SKILL.md` | 22 | `` `git clone <repo> werkstadt` `` | `` `git clone https://github.com/beriki770-ship-it/werkstadt werkstadt` `` |
 
 The two constants are empty in the repository on purpose. A URL that points at a
 release which does not exist yet fails as a 404 halfway through a download
@@ -113,7 +113,7 @@ tests the release URL rather than the local zip:
 
 ```
 cd %TEMP%
-git clone https://github.com/<your-github-account>/werkstadt wk-check
+git clone https://github.com/beriki770-ship-it/werkstadt wk-check
 cd wk-check
 python assets/fetch_assets.py --release
 python server.py --no-browser --port 4953
@@ -137,7 +137,7 @@ again from a clone. What has never been possible to test is the remote form,
 because there was no remote:
 
 ```
-/plugin marketplace add <your-github-account>/werkstadt
+/plugin marketplace add beriki770-ship-it/werkstadt
 /plugin install werkstadt@werkstadt
 ```
 
