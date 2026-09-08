@@ -1209,7 +1209,7 @@ real settlement's own data rather than by `life.html`'s hand-written flags.
 
 | shot | what it proves |
 |---|---|
-| `docs/shots/host-globe-plaza.png` | a `town` on the planet (`takt-robotik`) at the documented 72 m street pose: **fountain, kiosk, bus shelter and playground** on its square and the hedge along the paving, all at the `-mid` tier (`LIFE_PROP_MID`) because the far tier tears at this altitude (2026-09-07) |
+| `docs/shots/host-globe-plaza.png` | a `town` on the planet (a real client project) at the documented 72 m street pose: **fountain, kiosk, bus shelter and playground** on its square and the hedge along the paving, all at the `-mid` tier (`LIFE_PROP_MID`) because the far tier tears at this altitude (2026-09-07) |
 | `docs/shots/host-island-pasture.png` | the island's grazing field — a Hunyuan sheep and the hedge in frame, with `__props()` reading **6 sheep / 8 cows / 62 bushes / 11 dogs / 2 cats**. The animals are spread over the whole quarry rectangle, so the counts are the evidence and the frame is the sanity check; `__interior().inside` is asserted `false` because a closer fly-to lands inside a building (2026-09-07) |
 | `docs/shots/host-tags.png` | not a prop shot — **fourteen drone tags on `index.html`, every one a real task line** and none a path or a "Base directory" preamble, after `server.py`'s `task_line()` (2026-09-07) |
 

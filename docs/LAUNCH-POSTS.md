@@ -69,7 +69,7 @@ It also renders MP4s of finished sessions, and there's a wallpaper mode.
 
 Install is a clone, one asset download and `python server.py`. Python 3.9+,
 nothing to pip install, no build step. There's a Claude Code plugin too:
-/plugin marketplace add beriki770-ship-it/werkstadt
+/plugin marketplace add <your-github-account>/werkstadt
 
 Privacy, because it matters here: the server binds 127.0.0.1, there is no
 account and no telemetry, and `--redact` replaces every project name, session
@@ -80,7 +80,7 @@ Apache-2.0. Honest known limits are in the release notes — the Windows launche
 has never been run end to end, and four of the models are still procedural
 because no CC0 equivalent exists.
 
-https://github.com/beriki770-ship-it/werkstadt
+https://github.com/<your-github-account>/werkstadt
 ```
 
 ---
@@ -105,7 +105,7 @@ localhost, no account, no telemetry — and a --redact flag swaps every name off
 your disk for a pseudonym, which is how the screenshots were taken.
 
 Open source, Apache-2.0, free:
-https://github.com/beriki770-ship-it/werkstadt
+https://github.com/<your-github-account>/werkstadt
 ```
 
 ---
@@ -116,7 +116,7 @@ One line, alphabetical inside whichever section fits (Tools / Visualization). PR
 title: `Add Werkstadt`.
 
 ```
-- [Werkstadt](https://github.com/beriki770-ship-it/werkstadt) — Renders your local Claude Code session transcripts as a 3D world: a planet of projects, an island, and one session as a walkable city. Python stdlib server, runs offline, has a redaction mode.
+- [Werkstadt](https://github.com/<your-github-account>/werkstadt) — Renders your local Claude Code session transcripts as a 3D world: a planet of projects, an island, and one session as a walkable city. Python stdlib server, runs offline, has a redaction mode.
 ```
 
 Check the repository's CONTRIBUTING first — some of these lists want the entry

@@ -494,7 +494,7 @@ for the test only.
 | the globe actually renders | textured planet, settlements counted | 149 settlements, textured, at a 40 s settle. 11 s is too short — the world index is still building and the page is stars only | PASS |
 | with `assets/` removed: startup hint | one line naming both fetch commands | `_assets_unpacked()` returns `False`, and the print is gated on `sys.stdout.isatty()`, so it does not appear when stdout is redirected to a file. Verified by evaluating the predicate, not by reading the line | PARTIAL |
 | with `assets/` removed: pages still open | yes, untextured | all four open, **0 console errors**, 86 asset 404s | PASS |
-| `--redact` | no real name reaches a browser | `/api/config.js` gives `home: "~"`; `/api/world` gives `town-7f97`, `~/projects/town-8b3f`. grep for `berik`, `Desktop`, `AppData`, `claude-live`, `parrotgram`, `werkstadt`, `wildmoments` and any Hebrew character over 104 KB of response: **0 hits** | PASS |
+| `--redact` | no real name reaches a browser | `/api/config.js` gives `home: "~"`; `/api/world` gives `town-7f97`, `~/projects/town-8b3f`. grep for the real username, `Desktop`, other OS-specific profile folder names, `claude-live`, real project names, `werkstadt`, `wildmoments` and any Hebrew character over 104 KB of response: **0 hits** | PASS |
 
 **The two 404s are the documented fixture fallback**, not a regression:
 `replay.js` tries `data/demo.json` then `data/sample.json` when it is opened
@@ -589,7 +589,7 @@ which is the claim this row is making.
 | a crew on the street | > 0 | 3 workers, 1 drone, 2 crew actors, 1 car | PASS |
 | the accident | reaches `ambulance` | reaches `clear` and tears down — see 13.1 | PASS |
 | fixture size | ≤ 300 KB | 5,379 bytes | PASS |
-| fixture privacy | no username, `Desktop`, `Users`, `AppData`, or the throwaway folder's name | 0 occurrences of each | PASS |
+| fixture privacy | no username, `Desktop`, `Users`, other OS-specific profile folder names, or the throwaway folder's name | 0 occurrences of each | PASS |
 | screenshot | — | taken at `arrived`: two plates, ten lit buildings, the ambulance beacon and the hazard cones | PASS |
 
 ### 13.5 Four pages, cold

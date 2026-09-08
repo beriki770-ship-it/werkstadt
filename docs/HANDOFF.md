@@ -100,8 +100,9 @@ into `file-9e12.md` and the town into `town-3f9a`, which is the opposite of what
 a first-run demo is for. What the fixture carries instead is a project that has
 nothing private in it, with the one machine-specific thing in an export — the
 absolute path — rewritten to `C:/projects/widget-shop` before it was committed.
-A grep over the file for the username, `Desktop`, `Users` and `AppData` returns
-zero. The throwaway project and its transcript were deleted afterwards.
+A grep over the file for the real username, `Desktop`, `Users` and other
+OS-specific profile folder names returns zero. The throwaway project and its
+transcript were deleted afterwards.
 
 `data/sample.json` is deliberately still absent: `replay.js` probes `demo.json`
 first and never reaches the second name, so a bare `index.html` is now **zero**
@@ -194,9 +195,9 @@ four pages still open with zero console errors and 86 asset 404s, and
 is gated on `sys.stdout.isatty()`, so it does not appear when stdout is
 redirected — that is by design and it is why the predicate was tested rather
 than the line). `--redact` was re-checked on that clone: `home` becomes `~`,
-towns become `town-7f97`, and a grep for the username, `Desktop`, `AppData`,
-four real project names and any Hebrew character over 104 KB of API response
-returns zero hits.
+towns become `town-7f97`, and a grep for the real username, `Desktop`, other
+OS-specific profile folder names, four real project names and any Hebrew
+character over 104 KB of API response returns zero hits.
 
 **One expected failure in that run.** `index.html` opened with no `?src=` and
 no `?project=` produces two 404s — `data/demo.json` and `data/sample.json` —
@@ -218,10 +219,10 @@ still cannot be tested — that is step 6 of `docs/PUBLISH.md`.
 **The publish kit.** `docs/PUBLISH.md` (the exact `gh` commands, and a table of
 the six placeholder lines with their file and line number), `docs/RELEASE-NOTES.md`
 (the v0.1.0 text, with a real known-limits section) and `docs/LAUNCH-POSTS.md`
-(Show HN, r/ClaudeAI, LinkedIn and one `awesome-claude-code` line, for Beri to
-post himself). `gh auth status` on this machine says **beriki770-ship-it**,
-scopes `gist, read:org, repo, workflow` — nothing was created and nothing was
-logged in.
+(Show HN, r/ClaudeAI, LinkedIn and one `awesome-claude-code` line, for the
+maintainer to post). `gh auth status` on this machine reports a personal
+account, scopes `gist, read:org, repo, workflow` — nothing was created and
+nothing was logged in.
 
 ---
 
@@ -340,8 +341,8 @@ out of the two strings it hands over.
 
 Verified: a probe hit 39 routes plus three SSE feeds on a redacted server and
 grepped every byte for the 173 real town names and path segments taken from an
-unredacted `/api/world` snapshot, plus the username, `Desktop` and `AppData`,
-plus any Hebrew character. **Zero hits.** The thirteen matches it does report
+unredacted `/api/world` snapshot, plus the real username, `Desktop` and other
+OS-specific profile folder names, plus any Hebrew character. **Zero hits.** The thirteen matches it does report
 are `site` inside the key `"site_url"`, `site` inside a random `toolu_…` id,
 and the `.claude` / `tools` fragments of the shipped `continents` rules.
 `docs/shots/redact-city.png` is the same server seen from the pilot's seat.
@@ -508,15 +509,16 @@ secrets out of event text and runs whether or not `redact` is on.
 **4. No remote and no push.** Still true, and it is the only thing standing
 between this tree and a public repository. `main` is one commit; `pre-squash`
 holds the old five. `docs/PUBLISH.md` is the three commands, the six
-placeholder lines and the account (`beriki770-ship-it`).
+placeholder lines and the account to publish under.
 
 **5. A dozen "claude-live" strings survived the rename, all deliberate.** They
 sit in comments in `city.js`, `globe.js`, `world.js` and `server.py` and name
 the author's own project directory as the *subject of a measurement* ("measured
 7.7 px on the real claude-live town"). Renaming them would make the measurement
 unverifiable. Everything user-facing, every task name, every localStorage key
-and the asset fetcher's User-Agent were renamed. `grep -ri agentopolis` and
-`grep -ri berik` over the tree both return zero.
+and the asset fetcher's User-Agent were renamed — including an earlier working
+name for the project itself that turned out to be taken. A grep for that old
+name and for the author's own name over the tree both return zero.
 
 **6. The launcher chain has still never been run.** Phase A started the server
 from this folder with no `config.json` and drove headless Chrome at 1440x900

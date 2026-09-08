@@ -447,7 +447,7 @@ anybody is reading. **Floor: 14.**
 |---|---|
 | `docs/shots/interior-enter.png` | `__enterFile('city.js')`, poll `__interior().phase === 'in'`, hold 430 ms |
 | `docs/shots/interior-file.png` | then `__stand(0.4, 1.80, -1.0, -Math.PI / 2 + 0.55, 0.02)` |
-| `docs/shots/interior-html.png` | on `?project=c500d4e9` (musikschule) — `__seek(999999999)`, `__enterFile('index.html')`, `__stand(-0.1, 1.95, -1.55, Math.PI - 0.19, -0.02)` |
+| `docs/shots/interior-html.png` | on `?project=c500d4e9` (town-c500) — `__seek(999999999)`, `__enterFile('index.html')`, `__stand(-0.1, 1.95, -1.55, Math.PI - 0.19, -0.02)` |
 | `docs/shots/interior-street.png` | `__enterStreet(0)`, `__stand(0, 2.05, -3.0, Math.PI, 0.02)` |
 
 Measured 2026-09-06: `interior-file` 16.4 px, `interior-html` 14.5 px, both
@@ -458,11 +458,11 @@ building, walk it, leave — verified on `?project=cb09014b`. The one exception 
 an `.html` room, and it is not the page's: on the tree route (the normal case
 since HANDOFF's sixteenth pass), it is only the sandbox's own "Blocked script
 execution … sandboxed" notices — one per script tag the page ships, six on
-musikschule's `index.html`, re-verified 2026-09-06 against the real server. On
+town-c500's `index.html`, re-verified 2026-09-06 against the real server. On
 the `raw=1` fallback (an older server, or a path the tree route's guard
 refuses) the framed document's FIRST pass at its own relative assets also goes
 through `server.py`'s broken `<base>` and 404s before the load handler can
-rewire them (two on parrotgram — `/api/project/styles.css` and
+rewire them (two on town-91a7 — `/api/project/styles.css` and
 `/api/project/skippy-stamp.webp`), after which they load correctly. Both counts
 belong to the frame and both are attributable by the `url` on the log entry
 (`/api/project/tree/…` for the normal case, `/api/project/file`/`/asset` for
@@ -477,26 +477,26 @@ the floor plate on the lift AND a page of source — and it still measures 16.4 
 because the wall it faces is the side wall five units away rather than the back
 wall six and a half away.
 
-**`interior-html.png` moved to the musikschule town (`c500d4e9`), 2026-09-06.**
-Before HANDOFF's sixteenth pass it lived on parrotgram (`91a7433c`) instead,
+**`interior-html.png` moved to town-c500 (`c500d4e9`), 2026-09-06.**
+Before HANDOFF's sixteenth pass it lived on town-91a7 (`91a7433c`) instead,
 for a reason worth knowing even though it no longer applies: the window needs
 a town where the city's `rel` for a file IS that town's own relative path, and
-`chooseRoot()`'s 40% heuristic put musikschule on the wrong side of that line
+`chooseRoot()`'s 40% heuristic put town-c500 on the wrong side of that line
 (36.3% of its paths under the session cwd) — the endpoint 404'd on it and the
 room fell back to the labelled fixture, a coin flip depending on which paths a
 given session window happened to touch. Now that `chooseRoot()` reads the
 payload's own `root` outright (PAGE-WINDOW-DOC and HANDOFF's sixteenth pass),
-musikschule resolves every time, not on a knife edge — and it is the town this
+town-c500 resolves every time, not on a knife edge — and it is the town this
 whole fix was written to prove, so it is the reference now.
 
 - `cb09014b` (werkstadt) still resolves, but its own `index.html` is a
   `<canvas>` filled by a module script — a script cannot run in a sandboxed
   frame by design, so the window there is correctly, uselessly blank. Still not
   the reference, for that reason alone.
-- `c500d4e9` (musikschule) is the reference: real `root`, a designed page,
+- `c500d4e9` (town-c500) is the reference: real `root`, a designed page,
   `fixture: false` every time.
-- `91a7433c` (parrotgram) still works too (67.5% under its cwd even by the old
-  heuristic) and is the fallback proof if musikschule's session window ever
+- `91a7433c` (town-91a7) still works too (67.5% under its cwd even by the old
+  heuristic) and is the fallback proof if town-c500's session window ever
   moves enough to change which files exist at all.
 
 Three things that cost time here and will cost it again:
@@ -566,7 +566,7 @@ back to the pre-existing `GET /api/project/file?…&raw=1` and the `<base>`
 workaround below — `wirePageAssets()`/`inlineSheets()` are still there for
 exactly that case, not dead code.
 
-Verified on musikschule (`c500d4e9`) against the real running server: the
+Verified on town-c500 (`c500d4e9`) against the real running server: the
 iframe's `src` is `/api/project/tree/c500d4e9/index.html`, and the network log
 shows `css/base.css`, `css/instrument.css` and both webfonts loading as 200s
 off that same path — assets the old `<base>` splice could never reach one level
@@ -1742,7 +1742,7 @@ a generic quarter.
 
 | shot | how |
 |---|---|
-| `docs/shots/world-int-musikschule.png` | `__enterLandmark('musikschule')`, poll `phase === 'inside'`, `__stand(6.2, 3.3, -15.4, Math.PI - 0.60, -0.04)` |
+| `docs/shots/world-int-town-c500.png` | `__enterLandmark('town-c500')`, poll `phase === 'inside'`, `__stand(6.2, 3.3, -15.4, Math.PI - 0.60, -0.04)` |
 | `docs/shots/world-int-room.png` | then `__stand(-17.2, 1.90, -12.2, Math.PI / 2 - 0.42, -0.12)`, poll `__interior().loaded > 0`, hold 3 s |
 | `docs/shots/world-int-factory.png` | `__enterLandmark('zahnradpumpe')`, `__stand(4.4, 2.6, -13.0, Math.PI - 0.30, -0.02)` |
 | `docs/shots/world-int-studio.png` | `__enterLandmark('wild-digital-moments-site')`, `__stand(-1.5, 2.3, -6.0, Math.PI - 0.30, -0.02)` |
@@ -1750,7 +1750,7 @@ a generic quarter.
 
 **Console errors inside a landmark: 0**, except the framed page's own sandbox
 notices — one "Blocked script execution … sandboxed" per `<script>` the page
-ships (four on musikschule's `instrumente/schlagzeug.html`, measured
+ships (four on town-c500's `instrumente/schlagzeug.html`, measured
 2026-09-06). Same rule and same attribution as the session city's `.html` room:
 the `url` on the log entry is `/api/project/tree/…`, so they are the frame's and
 not the page's.
@@ -1764,7 +1764,7 @@ fresh headed Chrome process (`--disable-features=CalculateNativeWinOcclusion`),
 
 | state | stations built | live page window | median fps | samples | gate |
 |---|---|---|---|---|---|
-| a musikschule practice room, page window UP | 24 | 1 | **56** | 56,56,56,56,56 | 45 |
+| a town-c500 practice room, page window UP | 24 | 1 | **56** | 56,56,56,56,56 | 45 |
 | the concert hall, window hidden | 24 | 0 | **56** | 56,54,56,56,56 | 45 |
 | back OUT on the world, same process, high | — | — | 44 | 43,44,46,44,45 | 40 |
 
@@ -2163,13 +2163,13 @@ site-editor sign") `HARBOUR_VIEW` moved:
 - **`?focus=harbour` used to stand at `(76,-256,86,0.34,0.80)`, over
   `site-editor`'s barrel VAULT.** That vault is real geometry, but
   `__landmarkAt('site-editor')` shows `site-editor` is trade "MusicSchool"
-  by a server.py keyword-classifier bug (its own docs name the musikschule
+  by a server.py keyword-classifier bug (its own docs name the town-c500
   demo as its live reference; see server.py's `_keyword_trade_type()`) — it
   is a SoftwareSourceCode project, not a music school. The old comment here
   asserted "three unlike silhouettes" without checking which one was real.
   That is a server.py data bug and out of reach from `world.js`/`biomes.js`.
 - **The view now stands at `(95,-95,88,0.34,0.80)`, over the ACTUAL music
-  school.** `musikschule`'s own concert hall, `parrotgram`'s school and
+  school.** `town-c500`'s own concert hall, `town-91a7`'s school and
   `werkstadt`'s code shop are the three forms in frame, each with its own
   sign legible (`__signPixels()` there: 22 visible, 7 culled, min and median
   22 px against an 18 px floor). Same method as before, still the right one:
@@ -2452,7 +2452,7 @@ whenever any agent spans more than one town.
 | the city is black and nothing is in the console | the facade program did not link. `__selfcheck().attrs` is 17, not 16 — something added a vertex attribute past the sixteen GL guarantees | `attrs` 16; pack new per-building floats into the existing `aStatic`/`aTags`/`aLive` vec4s |
 | hovering a building does nothing, and clicking does nothing | `__selfcheck().sphereRadius` is **-1**: three cached the InstancedMesh's bounding sphere on an empty city and never invalidated it. The by-name entries (`__enterFile` etc.) keep working, which is how this hid through four passing captures | a positive radius, roughly half the city's diagonal |
 | a room shows `FIXTURE` on a town you know the server can read | the city's `rel` is not the town's own relative path — `chooseRoot()` landed above the town root. `__interior().fixture` is the check | `fixture` false; see HANDOFF open item 12 |
-| the page window in an `.html` room is blank white | that page draws itself with script, and script cannot run in that frame by design. `werkstadt`'s own `index.html` is exactly this case | a page whose content is markup renders; `parrotgram` is the reference |
+| the page window in an `.html` room is blank white | that page draws itself with script, and script cannot run in that frame by design. `werkstadt`'s own `index.html` is exactly this case | a page whose content is markup renders; `town-91a7` is the reference |
 | a headed capture reads 0 fps and a frozen clock even though the window is on screen | `document.hidden` is true — the window is occluded or unfocused, and `Page.bringToFront` alone does not clear it | send `Emulation.setFocusEmulationEnabled {enabled:true}` and `Page.setWebLifecycleState {state:'active'}` after `Page.enable`; `document.visibilityState` reads `visible` and the clock runs |
 | the city is small in the frame and the ground is empty | `FRAME_FILL` in `city.js`, or something putting a stray point into `cityBounds()` | `window.__frame().width` between 80 and 88 |
 | the upper half of the frame is one flat colour | the ground plane is opaque again — from this camera it covers the whole frame and the sky dome is never seen. The alpha fade at the end of the ground fragment shader is what makes a horizon | a dusk band above the far streets, and stars in it at the night keyframes |

@@ -602,8 +602,9 @@ mark vanished. Difference against white is contrast by construction.
 
 **Why:** the working name "Claude Live" is not usable — Anthropic's own Claude
 Code legal and compliance page restricts what a third-party tool may be called.
-The first replacement considered, "Agentopolis", was already taken by two
-existing GitHub projects with the same concept, plus npm and PyPI packages.
+The first replacement considered was an earlier working name that turned out
+to be taken — by two existing GitHub projects with the same concept, plus npm
+and PyPI packages.
 
 **Cost:** every user-facing string, the scheduled task names, the Lively library
 entry and the desktop shortcut had to move at once. Comments that name the
@@ -803,8 +804,9 @@ one thing that makes them mean anything. It was not needed either — the projec
 is fictional stock and shipping data written for this purpose, with nothing on
 it that belongs to anybody. The one machine-specific thing an export does carry,
 the absolute path, was rewritten to `C:/projects/widget-shop` before the file was
-committed; a grep for the username, `Desktop`, `Users` and `AppData` over the
-fixture returns zero, and the throwaway project and its transcript were deleted.
+committed; a grep for the real username, `Desktop`, `Users` and other
+OS-specific profile folder names over the fixture returns zero, and the
+throwaway project and its transcript were deleted.
 
 **Rejected — dropping the two probes in `replay.js` instead.** That closes the
 console and leaves the page saying "No session to replay yet" to somebody who
