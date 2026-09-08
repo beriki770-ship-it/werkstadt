@@ -126,6 +126,17 @@ Every project name, session title, file path, drone task tag and agent label is 
 
 Two things stop working while it is on, both by design: `aviary_projects` matches names that no longer exist, and a film recorded *before* you turned redaction on is left off the shelf, because its filename is a real session title. Films recorded while it is on are pseudonymous in their own filenames too.
 
+## Other agents (roadmap)
+
+Today Werkstadt reads Claude Code transcripts only. The renderer never sees Claude: the server
+turns any session log into one event schema (`prompt`, `text`, `tool`, `agent_start`, `agent_end`)
+and the world draws that. Adding another coding agent is one adapter in `server.py`, and a city is
+per project, not per tool, so a project you touch with two agents gets one city with both crews.
+
+Planned, in order: **Codex CLI** (JSONL session rollouts, closest to the current reader), then
+**Gemini CLI**, then **Cursor**. Nothing is promised until it is verified on real logs. If you
+want one of these first, open an issue with a sample of the log format.
+
 ## How it works
 
 `server.py` reads the session transcripts, the file trees of the projects those sessions touched, and (if you point it at one) an Obsidian vault, and serves them as JSON and SSE over a handful of `/api/*` endpoints. The pages read that and draw it — `index.html` one session as a city, `world.html` everything as an island, `globe.html` everything as a planet. Nothing on screen is invented: every count, height and population is a division of something in the data.
