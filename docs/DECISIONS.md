@@ -720,3 +720,60 @@ anybody ever makes. The tracked working tree is 14.97 MB instead of 115.28 MB.
 has to be rebuilt and re-attached whenever the library changes. `server.py`
 prints one line naming both commands when the library is not unpacked, so the
 second step is discoverable from the first failure rather than from the README.
+
+### A road vehicle has two dials, `height` and `length`
+
+**Decision:** The five road vehicles in `life.js`'s `RIGID` catalogue carry a
+`length` in real metres alongside `height`, and `_buildRigid()` applies it as a
+stretch along the model's own long horizontal axis after the uniform height fit:
+car 4.30 m, van 5.20 m, pickup 5.30 m, the box lorry 9.00 m, tractor 4.00 m.
+Everything else in the file — every static, the robot, the drone — still has
+`height` and nothing else.
+
+**Why.** A uniform scale can only be right for a model whose proportions are
+already right, and Kenney's are not: the sedan is 2.55 long against 1.3 tall, a
+ratio of 1.96 where a real car is nearer 3.0. Fitted to a 1.45 m roof it came
+out **2.84 m** long against the previous pack's 4.5 m. That is not cosmetic:
+`populate()` sizes a lane's capacity off the longest vehicle the road may carry,
+so a 41% short car packs 41% more of them onto the same street. Measured on
+`life.html?stress=1`, before **76 placed / 4 dropped**, after **54 / 26** —
+which is exactly the pre-CC0 pack's own numbers.
+
+**Rejected — raising `height` until the length came out right.** It is one
+dial, so it moves all three axes: a 4.3 m Kenney sedan is 2.19 m tall and 2.53 m
+wide, taller than the van beside it and wider than its lane. The van row's own
+comment already records that the roof height had to be lowered from 2.20 to 2.00
+for exactly this reason.
+
+**Rejected — putting the number in `assets/manifest.json`.** The manifest's
+`heightUnits` and `extentUnits` are *measurements written by
+`assets/fetch_assets.py`*, and neither `_buildRigid()` nor `landmarkScan()` uses
+them to size anything — both fit off the geometry in front of them and read the
+manifest only as a sanity check. Editing a measured row would change nothing on
+screen and would be overwritten the next time the fetcher runs. The intent
+belongs in the catalogue, next to `height`, which is where every other
+size decision in the file already lives.
+
+**Cost.** A stretch on one axis turns a cylindrical wheel into an ellipse in
+side view. The factors are 1.13 (tractor) to 1.65 (lorry), which is visible in a
+close side-on shot of the lorry and not at street distance. The alternative
+errors were both worse and both wrong from every angle.
+
+### The old history is a local branch, not a rewritten remote
+
+**Decision:** `main` is a single root commit containing the whole current tree.
+The five phase A-C commits are kept locally on `pre-squash` and are not pushed.
+
+**Why.** The first of those commits carried the 103 MB asset library before it
+was moved out of git, and git keeps a binary forever: `git count-objects` read
+**100.78 MiB** of loose objects, and every clone anyone ever made would have
+paid for it. A fresh single-branch clone of the new `main` fetches a **13.59
+MiB** pack. The working tree it checks out is 17 MB.
+
+**Cost.** The local `.git` is still ~101 MB, because `pre-squash` keeps those
+blobs reachable — that is the price of not throwing the old history away, and it
+is paid on one machine rather than by everybody who clones. Deleting the branch
+and re-running `git gc --prune=now` is the whole of the cleanup if it is ever
+wanted. The phase A-C commit messages are also no longer in the public history;
+what they said is in this file and in `HANDOFF.md`, which is where a reader
+actually looks.

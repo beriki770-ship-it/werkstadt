@@ -397,3 +397,128 @@ cow at four metres), `docs/shots/cc0-city-crew.png` (the city at street level).
 The city one is the weakest of the three and honestly so: the city draws the
 living layer at `LIFE_SCALE 0.23` and it is a night scene, so a crew member is a
 few pixels. The street and pasture frames are where the CC0 set can be judged.
+
+---
+
+## 12. Phase D — vehicle scale, the squashed history, a clean clone (2026-09-08)
+
+Everything in this section was run on 2026-09-08 against the tree as it stands.
+The pages were driven by the CDP harness of section 1 at 1440x900 on port 4953.
+
+### 12.1 Vehicle scale
+
+`life.html?stress=1`, measured through `window.__life()` and `__counts()`.
+
+| check | expected | measured | result |
+|---|---|---|---|
+| car length | ~4.3 m | 4.30 m (1.67 wide, 1.45 tall) | PASS |
+| van length | ~5.2 m | 5.20 m (2.22 wide, 2.00 tall) | PASS |
+| pickup length | ~5.3 m | 5.30 m (2.08 wide, 1.80 tall) | PASS |
+| box lorry (`bus`) length | ~9 m | 9.00 m (2.77 wide, 2.40 tall) | PASS |
+| tractor length | ~4 m | 4.00 m (2.18 wide, 2.60 tall) | PASS |
+| bicycle | untouched | 2.04 m | PASS |
+| `_deckFor()` lane capacity | back to the pre-CC0 range | **54 placed / 26 dropped**, against 76 / 4 before the change and 54 / 26 on the private install | PASS |
+| `__headingErr()` | no vehicle pointing across its own path | 0 warnings, 0 wraps | PASS |
+| `__pedOnRoad()` | empty | empty | PASS |
+| `__carsInZone()` | empty | empty | PASS |
+| `__overlaps()` over 600 frames | 0 | **45-75 frames of 600 carry 1-2 pairs** | **FAIL — see below** |
+
+Screenshot: `docs/shots/cc0-street-scaled.png`, the same stress scene from above
+the street. The vehicles now read at the size of the road and of the people on
+the pavement; compare `docs/shots/cc0-street.png`, which is the same module
+before the change.
+
+**The overlap failure, measured rather than waved away.** The baseline
+(2.84 m vehicles) is 0 frames of 600. After the change it is 45 to 75 frames,
+never more than two pairs at once, and every occurrence caught is the same
+situation: a vehicle standing in the gridlocked side street with its tail inside
+the crossing carriageway, and a car on the main road clipping the corner of it.
+Two examples, both captured with their full state:
+
+- a van stopped on lane 4 at (14.6, 4.95), heading +Z, body spanning z 2.35 to
+  7.55 — 0.25 m of it inside the z = 2.6 lane — while a van on lane 1 drives
+  through at 3.6 m/s;
+- a car stopped on lane 5 at (9.4, -3.85) with the same geometry, clipped by a
+  pickup on lane 0.
+
+It is not the scale arithmetic. It is that `?stress=1` asks for 80 vehicles on a
+network that holds 54, so the 69 m side street stands still — 20 of the 54 are
+stopped at any moment — and a stopped vehicle that entered the junction box on a
+green cannot leave it. With 2.84 m vehicles the same cars stopped in the same
+places and were simply too short to touch anything.
+
+Two fixes were tried and **both were reverted**, because a change to the driving
+model that does not measurably help is a change that should not ship:
+
+- reducing a follower's `free` by a turning leader's remaining arc, so it
+  measures to the metal rather than to the reserved slot: 74 bad frames against
+  75. No effect.
+- adding `v.half` to the "do not block the box" reservation, so the far side is
+  reserved by the tail rather than by the centre: **117** bad frames. Worse — the
+  extra caution backs the queue into the other junction.
+
+What would actually fix it is a junction model that can get a stopped vehicle
+out of the box, and that is a different piece of work from sizing a car. Logged
+here rather than hidden, and named in the release notes.
+
+### 12.2 The squashed history
+
+| check | expected | measured | result |
+|---|---|---|---|
+| commits on `main` | 1 | 1 (`Werkstadt 0.1.0 — a live 3D world for your Claude Code sessions`) | PASS |
+| old history kept locally | branch `pre-squash` | present, 5 commits, not pushed | PASS |
+| loose objects before | — | `count: 243, size: 100.78 MiB, packs: 0` | — |
+| after `git gc --prune=now --aggressive` | packed | `in-pack: 247, size-pack: 99.95 MiB`, `.git` 101 MB — `pre-squash` keeps the asset blobs reachable | PASS (expected) |
+| what a clone actually fetches | small | `git clone --no-local --single-branch --branch main` gives **`size-pack: 13.59 MiB`**, `.git` 14 MB | PASS |
+| tracked working tree | 20 MB or less | 17 MB, 94 files | PASS |
+| `dist/` in the commit | no | gitignored, not tracked | PASS |
+
+A local clone is not evidence here. `git clone` of a path on the same disk
+hardlinks the whole object store, unreachable objects included, and reports 101
+MB. `--no-local` (or a `file://` URL) is what does the pack negotiation a real
+fetch does, and it is the only number worth quoting.
+
+### 12.3 A clone that has never seen this machine
+
+`git clone --no-local` into `%TEMP%\wk-clone`, the release zip copied to a
+sibling folder, and `RELEASE_URL` / `RELEASE_SHA256` pointed at a `file://` URL
+for the test only.
+
+| check | expected | measured | result |
+|---|---|---|---|
+| `fetch_assets.py --release` | downloads, verifies, unpacks | `== unpacked 100 files into assets/ ==`, exit 0, 98 files on disk | PASS |
+| the hash gate actually gates | a wrong digest refuses | digest changed by hand gives `sha256 MISMATCH`, exit 3, zip left on disk | PASS |
+| `server.py --no-browser --port 4953` first run | writes `config.json` from the example | written | PASS |
+| four pages, console errors | 0 | 0 | PASS |
+| four pages, 4xx | 0 | **2 on `index.html`**: `data/demo.json`, `data/sample.json` | FAIL — expected, see below |
+| the globe actually renders | textured planet, settlements counted | 149 settlements, textured, at a 40 s settle. 11 s is too short — the world index is still building and the page is stars only | PASS |
+| with `assets/` removed: startup hint | one line naming both fetch commands | `_assets_unpacked()` returns `False`, and the print is gated on `sys.stdout.isatty()`, so it does not appear when stdout is redirected to a file. Verified by evaluating the predicate, not by reading the line | PARTIAL |
+| with `assets/` removed: pages still open | yes, untextured | all four open, **0 console errors**, 86 asset 404s | PASS |
+| `--redact` | no real name reaches a browser | `/api/config.js` gives `home: "~"`; `/api/world` gives `town-7f97`, `~/projects/town-8b3f`. grep for `berik`, `Desktop`, `AppData`, `claude-live`, `parrotgram`, `werkstadt`, `wildmoments` and any Hebrew character over 104 KB of response: **0 hits** | PASS |
+
+**The two 404s are the documented fixture fallback**, not a regression:
+`replay.js` tries `data/demo.json` then `data/sample.json` when it is opened
+with no `?src=` and no `?project=`, and phase A removed both fixtures because
+they were exports of private sessions (HANDOFF, gap 2). The page handles it —
+it prints "No session to replay yet. Export one to data/demo.json, or pass
+?src= a replay file." — so the user-visible behaviour is correct and only the
+console is untidy. Left alone rather than fixed, because deleting a fallback in
+`replay.js` is a change to code phase D was not asked to touch. It is a two-line
+decision for Beri: ship a small public fixture, or drop the two probes.
+
+### 12.4 The plugin, from a clone
+
+| check | expected | measured | result |
+|---|---|---|---|
+| `claude plugin validate ./plugin` | passes | Validation passed | PASS |
+| `claude plugin validate .` | passes | Validation passed | PASS |
+| `claude plugin marketplace add <clone>` | registers | Successfully added marketplace: werkstadt | PASS |
+| `claude plugin install werkstadt@werkstadt --scope local` | installs | Successfully installed; `claude plugin list` shows `werkstadt@werkstadt 1.0.0, local, enabled` | PASS |
+| the skill is there | one skill | `~/.claude/plugins/cache/werkstadt/werkstadt/1.0.0/skills/werkstadt` | PASS |
+| removed again | the machine is as it was | marketplace removed, plugin gone from `claude plugin list`, download cache deleted. Marketplaces before **and** after: `trailofbits`, `ponytail`. Installed plugins before and after: 7 | PASS |
+| `/plugin marketplace add owner/repo` | — | still cannot be tested: no remote. It is step 6 of `docs/PUBLISH.md` | NOT RUN |
+
+Note for whoever repeats this: `claude plugin uninstall` needs `--scope local`
+when the install used it, and removing the marketplace first makes the uninstall
+report "not found in installed plugins", which is confusing but harmless. Check
+`claude plugin list` rather than trusting either message.

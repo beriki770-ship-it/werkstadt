@@ -309,6 +309,16 @@ yaw that turns the model's own forward onto +Z and every one of them was
 | `drone` | `model.hy.drone` | 0.34 | +Z | 0.7 x 0.6 | 50,000 / 7,941 / 3,497 |
 | `parrot` | `model.hy.parrot` | 0.32 | +Z | 0.1 x 0.3 | 50,008 / 7,957 / 2,972 |
 
+> **The CC0 set added a second dial, and this table predates it.** The five road
+> vehicles now carry a `length` in real metres beside `height`, applied by
+> `_buildRigid()` as a stretch along the model's long horizontal axis after the
+> uniform height fit: car 4.30, van 5.20, pickup 5.30, box lorry 9.00, tractor
+> 4.00. It exists because Kenney's bodies are stubbier than the generated ones
+> were — 1.96 long per unit tall against about 3.0 — so a single uniform scale
+> cannot give a vehicle both the right roof height and the right length, and it
+> is the LENGTH that `populate()` sizes a lane's capacity from. The fitted
+> L x W column above is the OLD pack; `life.js`'s `RIGID` is the current truth.
+
 Three things about loading them are not optional:
 
 - **They are meshopt-compressed.** `EXT_meshopt_compression`,

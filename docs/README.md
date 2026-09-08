@@ -17,7 +17,10 @@ how to run it. Start there. Come here when you are working on the code.
 | `BUILDINGS.md` | `buildings.js`, the procedural building generator — the LOD ladder, the facade bake, its own showcase page |
 | `DRONES.md` | `drones.js`, the aircraft kit — airframes, LOD bands, variant rigs, its own showcase page |
 | `LIFE.md` | `life.js`, the living layer — cars, people, animals, the pavement graph, the crowd solver, and its known limits |
-| `shots/` | eight reference screenshots the checks in `TESTS.md` refer to by name |
+| `PUBLISH.md` | phase D's output: the exact commands that create the GitHub repository, cut the release and fill in the placeholders — none of them run yet |
+| `RELEASE-NOTES.md` | the text of the v0.1.0 release, including its honest known-limits section |
+| `LAUNCH-POSTS.md` | drafts for Beri to post himself — Show HN, r/ClaudeAI, LinkedIn, and one `awesome-claude-code` entry |
+| `shots/` | ten reference screenshots the checks in `TESTS.md` refer to by name |
 
 Two conventions worth knowing before you edit anything here. Filenames are
 fixed and never dated — a superseded document goes to `docs/archive/`, it does

@@ -20,7 +20,8 @@ below describes this tree, not the one it came from.
 
 ## The release plan
 
-Four phases. **A, B and C are done. D is not started.**
+Four phases. **A, B and C are done. D is prepared but NOT pushed** — there is
+still no GitHub repository. `docs/PUBLISH.md` is the remaining three commands.
 
 ### Phase A — get it out of the private install (done)
 
@@ -40,10 +41,97 @@ release zip. See "What phase B did" below.
 `redact` implemented, a cross-platform first run, a Claude Code plugin wrapper,
 and a second privacy pass over the screenshots. See "What phase C did" below.
 
-### Phase D — publish
+### Phase D — prepare the publish (done, except the push)
 
-Create the GitHub repository, first push, write release notes, submit to the
-relevant lists.
+Squash the history, fix the vehicle scale phase B measured and left open, prove
+the whole thing from a clone that has never seen this machine, and write the
+publish kit. The GitHub repository, the push, the release and the posts are
+deliberately NOT done: the account was not confirmed when phase D ran. See
+"What phase D did" below and `docs/PUBLISH.md`.
+
+---
+
+## What phase D did
+
+Verified against this tree, not from memory. **Nothing was pushed and no
+GitHub repository exists.** Phase D is the preparation; `docs/PUBLISH.md` is
+the rest of it, written so the publish is three commands.
+
+**The history is one commit again.** `main` is a single orphan commit,
+`Werkstadt 0.1.0 — a live 3D world for your Claude Code sessions`, holding the
+whole tree. The five phase A-C commits live on the local branch `pre-squash`
+and are not pushed. The reason is `git count-objects`: the first of those
+commits carried the 103 MB asset library before phase B moved it out of git,
+and that read **100.78 MiB** of loose objects. A single-branch `--no-local`
+clone of the new `main` fetches a **13.59 MiB** pack and checks out a 17 MB
+tree, 94 files. The local `.git` is still ~101 MB and stays that way as long as
+`pre-squash` exists — that is one machine paying instead of everybody who
+clones, and `git branch -D pre-squash && git gc --prune=now` is the whole of the
+cleanup if it is ever wanted. See DECISIONS, "The old history is a local branch".
+
+**The CC0 vehicles are the right size.** Phase B's note ended "worth
+revisiting: either the vehicles are scaled up, or lane capacity stops being a
+pure function of vehicle length." It is the first, and it needed a second dial
+rather than a bigger `height`: the five road-vehicle rows in `life.js`'s `RIGID`
+catalogue now carry a `length` in real metres — car 4.30, van 5.20, pickup 5.30,
+box lorry 9.00, tractor 4.00 — which `_buildRigid()` applies as a stretch along
+the model's long horizontal axis after the uniform height fit. `life.html?stress=1`
+places **54 vehicles and drops 26**, which is exactly what the private install
+did; before the change it was 76 and 4. `docs/shots/cc0-street-scaled.png` is
+the result. The manifest was NOT touched, and DECISIONS says why: `heightUnits`
+and `extentUnits` are measurements the fetcher writes, nothing sizes anything
+from them, and the fetcher would overwrite an edit on its next run.
+
+**One thing the scale change made worse, and it is not fixed.** The 600-frame
+overlap probe on the stress scene goes from 0 bad frames to 45-75, never more
+than two pairs at once. It is always the same thing: `?stress=1` asks for 80
+vehicles on a network that holds 54, the side street gridlocks, a vehicle that
+entered the junction box on a green stops with its tail in the crossing
+carriageway, and the longer body now reaches far enough to touch a car going
+past. Two candidate fixes were implemented, measured and **reverted** — one
+made no difference, one made it worse. `docs/TESTS.md` 12.1 has both numbers and
+the captured vehicle states. The real fix is a junction model that can clear
+its own box, which is a different job from sizing a car.
+
+**A clone was proved end to end.** `git clone --no-local` into a temp
+directory, the release zip beside it and `RELEASE_URL` pointed at a `file://`
+URL for the test: the fetcher downloaded, verified the SHA-256 and unpacked 100
+files; the server wrote `config.json` on first run; all four pages opened with
+**zero console errors**. The hash gate was proved by breaking it on purpose —
+a wrong digest exits 3 and leaves the zip on disk. With `assets/` removed the
+four pages still open with zero console errors and 86 asset 404s, and
+`_assets_unpacked()` returns False so the startup hint fires (the print itself
+is gated on `sys.stdout.isatty()`, so it does not appear when stdout is
+redirected — that is by design and it is why the predicate was tested rather
+than the line). `--redact` was re-checked on that clone: `home` becomes `~`,
+towns become `town-7f97`, and a grep for the username, `Desktop`, `AppData`,
+four real project names and any Hebrew character over 104 KB of API response
+returns zero hits.
+
+**One expected failure in that run.** `index.html` opened with no `?src=` and
+no `?project=` produces two 404s — `data/demo.json` and `data/sample.json` —
+because `replay.js` probes for the fixtures phase A deliberately removed. The
+page handles it and prints "No session to replay yet", so the behaviour is
+right and only the console is untidy. Left alone on purpose: editing
+`replay.js` is outside what phase D was asked to touch. It is a two-line
+decision — ship a small public fixture, or drop the two probes.
+
+**The plugin was installed and removed again, from the clone.** Both manifests
+validate, `claude plugin marketplace add <clone>` registered it,
+`claude plugin install werkstadt@werkstadt --scope local` installed it, and the
+skill appeared at `~/.claude/plugins/cache/werkstadt/werkstadt/1.0.0/skills/werkstadt`.
+Then all of it was removed and the machine checked: marketplaces before and
+after are `trailofbits` and `ponytail`, installed plugins 7 and 7, and the
+download cache is gone. The remote form, `/plugin marketplace add owner/repo`,
+still cannot be tested — that is step 6 of `docs/PUBLISH.md`.
+
+**The publish kit.** `docs/PUBLISH.md` (the exact `gh` commands, and a table of
+the six placeholder lines with their file and line number), `docs/RELEASE-NOTES.md`
+(the v0.1.0 text, with a real known-limits section) and `docs/LAUNCH-POSTS.md`
+(Show HN, r/ClaudeAI, LinkedIn and one `awesome-claude-code` line, for Beri to
+post himself). `gh auth status` on this machine says **beriki770-ship-it**,
+scopes `gist, read:org, repo, workflow` — nothing was created and nothing was
+logged in.
 
 ---
 
@@ -288,8 +376,8 @@ population the CC0 street places **76 vehicles against 54** (`carsDropped` 4
 against 26), because a Kenney car is 2.84 m long against the old 4.5 m and
 `populate()` sizes a lane's capacity off the longest vehicle it may carry. Same
 road, 41% more cars on it. Triangles went the other way, 3.47 M to 1.90 M.
-Worth revisiting: either the vehicles are scaled up, or lane capacity stops
-being a pure function of vehicle length.
+**Closed in phase D**, the first way: a `length` dial on the five road-vehicle
+rows puts a car back at 4.30 m and the street back at 54 placed / 26 dropped.
 
 ---
 
@@ -302,7 +390,8 @@ Two things it did NOT close: `assets/cc0/fountain.glb` is still two primitives
 (the second is Kenney's own `(%ignore)` water plane, which is the one we want
 dropped, so this is correct rather than pending), and the release zip's
 `RELEASE_URL` / `RELEASE_SHA256` in `assets/fetch_assets.py` are empty until
-there is a release to point at — that is phase D's first job.
+there is a release to point at. Phase D proved both work against a `file://`
+URL and left them empty; filling them is step 4 of `docs/PUBLISH.md`.
 
 **2. `data/` ships empty, and the fixtures it held are gone.**
 Left behind on purpose — they were exports of private sessions. What referenced
@@ -325,7 +414,10 @@ is `.cache/`, which is gitignored and regenerates.
 `export_replay.redact()`, which is a different and older thing: that one strips
 secrets out of event text and runs whether or not `redact` is on.
 
-**4. No remote and no push.** `git init` only. Zero commits.
+**4. No remote and no push.** Still true, and it is the only thing standing
+between this tree and a public repository. `main` is one commit; `pre-squash`
+holds the old five. `docs/PUBLISH.md` is the three commands, the six
+placeholder lines and the account (`beriki770-ship-it`).
 
 **5. A dozen "claude-live" strings survived the rename, all deliberate.** They
 sit in comments in `city.js`, `globe.js`, `world.js` and `server.py` and name
@@ -349,7 +441,21 @@ scheduled tasks, the screensaver watcher, the Lively wallpaper entry,
 The systemd and launchd units in `docs/RUNBOOK.md` are written from the code and
 are marked untested; this machine is Windows only.
 
-**7. Three module docs reference screenshots that no longer exist.**
+**7. The stress scene overlaps at the crossroads, since phase D.** 45 to 75
+frames of 600 carry one or two overlapping vehicle pairs on
+`life.html?stress=1`, where the pre-scale build had zero. Not the scale
+arithmetic: the scene asks for 80 vehicles on a network that holds 54, the side
+street gridlocks, and a vehicle stopped in the junction box is now long enough
+for its tail to reach the crossing lane. Two fixes were tried and reverted with
+their numbers — `docs/TESTS.md` 12.1. The real fix is a junction model that can
+clear its own box.
+
+**8. `index.html` opened bare produces two 404s.** `data/demo.json` and
+`data/sample.json`, the fixtures gap 2 above describes. The page handles it and
+says so on screen; the console does not. Two lines either way — a small public
+fixture, or drop the probes in `replay.js`.
+
+**9. Three module docs reference screenshots that no longer exist.**
 `docs/BUILDINGS.md`, `docs/DRONES.md` and `docs/LIFE.md` name roughly twenty
 `docs/shots/*.png` files (`buildings-night.png`, `drones-lineup.png`,
 `life-plaza.png` and so on) that phase A removed when it cut `docs/shots/` down
