@@ -18,6 +18,49 @@ below describes this tree, not the one it came from.
 
 ---
 
+## Street signs can be filtered, and no machine path reaches a sign or a tag — 2026-09-08 (later still)
+
+Two more product fixes ported from the private install (`docs/HANDOFF.md`
+`CITY-SIGNS-DOC` / `CITY-SCRUB-DOC` / `SERVER-SCRUB-DOC` there), merged by hand
+into `city.js` and `server.py`, keeping this fork's own changes (the accident
+fixes and demo fixture above, the CC0 asset set, the redact layer) in the same
+functions.
+
+**1 · `index.html?signs=<sid|prefix|none>`.** Draws one avenue's street sign, or
+none at all — the same reason `globe.html?signs=<name>` (section 13.3) already
+exists one layer up: a frame of this city at label size publishes the TITLE of
+every conversation on the machine. `SIGNS_ONLY` + `wantsSign()` beside
+`STREET_SIGN`, an early return in `nameStreet()` (filtered at BUILD time, not
+hidden — a sign that is never created cannot come back on a live `street`
+event), an `if (s.sign)` guard in `syncStreets()` (which wrote the sign's
+position unconditionally and would have thrown once signs could be null), and
+`signsBuilt` added to `tagPixels()`'s return — the only count that can gate
+`?signs=`, because `signs` is what is in frame this instant.
+
+**2 · No machine path reaches a tag or a sign.** A drone tag or street sign
+could carry an absolute path, an env/PowerShell assignment whose value is one,
+or a long URL. `city.js` gets `PATHY`/`URLY`/`DRIVE`/`lastTagSeg`/`scrubTag()`
+in the LABELS section (right after `clipName()`), applied in `makeDrone()`'s
+label, `workerTagText()`'s tag text, and `nameStreet()`'s sign text — the same
+rule `server.py`'s `task_line()` already applies one layer up, now joined by a
+`scrub_paths()` helper and applied to the `/api/world` live-agent label as
+well (which does not pass through `task_line()`).
+
+**Where `sid` comes from in this fork.** `replay.js`'s single-session mode
+(`SOLO_STREET`) makes the one avenue's `sid` the literal string `'solo'`, not a
+session-id prefix — `?signs=solo` is this fork's equivalent of the private
+install's `?signs=<8-char session prefix>`, verified against `data/demo.json`.
+
+Verified on a test server, port 4956, own Chrome PID: `?src=data/demo.json` →
+`signsBuilt` 1; `&signs=none` → 0; `&signs=solo` → 1; `/api/world`'s 151 real
+towns carry no `Users`/`C:\`/`/c/`/`SCRATCH` in any `label`; `--redact` still
+turns every town/task/session name into a `town-`/`task-`/`session-` pseudonym
+on `/api/world`, `/api/sessions` and `/data/demo.json`; 0 console errors on
+`index.html`/`globe.html`/`world.html`; `server.py` parses; `readable/audit.py`
+reads `city.js` `ok`. Full table: `docs/TESTS.md` section 14.
+
+---
+
 ## The accident finishes, and there is a demo to watch it in — 2026-09-08 (later)
 
 Two things happened after phase D. The private install this fork was cut from

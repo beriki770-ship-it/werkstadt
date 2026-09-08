@@ -1988,6 +1988,48 @@ _NOT_TASK_RE = re.compile(r"^(base directory\b|[a-z]:[\\/]|/|<|#|\||-{3,}|={3,})
                           re.IGNORECASE)
 
 
+# NO MACHINE PATHS ON A SIGN OR A TAG  <!-- SERVER-SCRUB-DOC -->
+# The line stays the agent's REAL first line -- nothing invented, nothing
+# summarised. What comes out of it is the part that is not the task: an
+# absolute path, an inline env assignment, or a long URL. A drone tag once
+# read `Bash · SCRATCH="/c/Users/` -- most of a Windows temp path and not one
+# character of what ran -- and a street sign carries whatever this returns
+# into a film. Token by token, so the rest of the line survives: a path keeps
+# its LAST segment, an env assignment whose value is a path is dropped whole,
+# and a URL over 24 characters keeps its last segment. city.js scrubTag()
+# is the same rule one layer down, for the live event path that never comes
+# through here.
+_PATHY_RE = re.compile(r'^(?:[a-z]:[\\/]|~[\\/]|%[a-z_]+%|/(?:[a-z]|users|home|mnt|opt|var|tmp|etc)/)', re.IGNORECASE)
+_URLY_RE = re.compile(r'^[a-z][a-z0-9+.-]*://', re.IGNORECASE)
+_STRIP_CHARS = "\"'`,;"
+_DRIVE_RE = re.compile("^[a-z]:", re.IGNORECASE)   # a Windows drive, path or not
+# The `$` is PowerShell's ($root='C:\Users\...'), and _DRIVE_RE catches a value
+# the 18-character tag clip has already cut down to `C:`.
+_ENV_RE = re.compile("^[$]?([A-Za-z_][A-Za-z0-9_]*)=[\"'`]?(.*)$")
+
+
+def _last_seg(tok):
+    return tok.rstrip('/\\').replace('\\', '/').rsplit('/', 1)[-1] or tok
+
+
+def scrub_paths(text):
+    """A tag line with the machine's own paths taken out of it."""
+    out = []
+    for raw in (text or "").split():
+        tok = raw.strip(_STRIP_CHARS)
+        env = _ENV_RE.match(tok)
+        if env and (_PATHY_RE.match(env.group(2)) or _URLY_RE.match(env.group(2))
+                    or _DRIVE_RE.match(env.group(2))):
+            continue
+        if _PATHY_RE.match(tok):
+            out.append(_last_seg(tok))
+        elif _URLY_RE.match(tok) and len(tok) > 24:
+            out.append(_last_seg(tok))
+        else:
+            out.append(raw)
+    return " ".join(out).strip()
+
+
 def task_line(text):
     """The first line of a prompt that reads as WHAT THE AGENT IS DOING.
 
@@ -2001,7 +2043,7 @@ def task_line(text):
             continue
         if "system-reminder" in line.lower():
             continue
-        return er.clip(line, 48)
+        return er.clip(scrub_paths(line), 48)
     return ""
 
 
@@ -2072,7 +2114,10 @@ def session_live_state(main, subs, now_ts):
         # preamble a dispatched agent's prompt opens with. See task_line().
         label = (meta.get("description") or a["task"] or er.clip(a["prompt"], 60)
                  if a else "") or call.get("label") or agent_id
-        agents.append({"id": agent_id, "label": er.clip(label, 60),
+        # The description from a meta.json and the raw prompt fallback do not
+        # pass through task_line(), so the scrub happens on the LABEL as well --
+        # `Base directory for this skill: C:\\Users\\` arrived by that route.
+        agents.append({"id": agent_id, "label": er.clip(scrub_paths(label), 60),
                        "started": call.get("started"),
                        "last_tool": a["tool"] if a else "",
                        "last_path": a["path"] if a else "",

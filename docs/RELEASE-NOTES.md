@@ -82,6 +82,9 @@ does not carry the world — the repository is still what you clone.
   one of which fails, which is what puts an ambulance on the street.
 - An asset set that is entirely CC0 (Kenney, Quaternius, Poly Haven) plus one
   model of the studio's own. `assets/CREDITS.md` has the licence table.
+- Street signs can be filtered (`index.html?signs=<sid|prefix|none>`), and no
+  machine path — a Windows drive letter, an env assignment, a long URL — ever
+  reaches a street sign or a drone/worker tag.
 
 ## Known limits
 

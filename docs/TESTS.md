@@ -603,3 +603,24 @@ for 25 seconds.
 | `globe.html` | 0 | 0 | PASS |
 | `world.html` | 0 | 0 | PASS |
 | `life.html` | 0 | 0 | PASS |
+
+## 14. Street-sign filter and path scrub, ported (2026-09-08, later)
+
+`index.html?signs=<sid|prefix|none>` (`city.js`), and no machine path reaching a
+sign or a tag (`city.js scrubTag()`, `server.py scrub_paths()`), ported from the
+same private install as section 13 — this fork's own `sid` (`replay.js
+craftIdFor()`) is `'solo'` in single-session mode, not a session-id prefix, so
+`?signs=` is tested against that value here.
+
+Test server on port 4956, `data/demo.json` as the source, own Chrome PID.
+
+| check | how | result |
+|---|---|---|
+| no `signs=` flag | `?src=data/demo.json`, `window.__tags().signsBuilt` | 1 |
+| `signs=none` | `?src=data/demo.json&signs=none` | `signsBuilt` 0 |
+| `signs=<sid>` | `?src=data/demo.json&signs=solo` | `signsBuilt` 1 |
+| `/api/world` labels carry no machine path | 151 real towns, walked every `label` field for `Users`/`C:\`/`/c/`/`SCRATCH` | 0 hits |
+| `--redact` still yields 0 real names | `/api/world`, `/api/sessions`, `/data/demo.json` spot-checked | town/task/session names all `town-`/`task-`/`session-` pseudonyms, 0 real names |
+| console errors, `index.html` / `globe.html` / `world.html` | loaded fresh, `signs=solo` on index | 0 / 0 / 0 |
+| `python -c "import ast;ast.parse(...)"` on `server.py` | ran after the edit | no error |
+| `readable/audit.py` on `city.js` | ran after the edit | 8.9% comments, 54 banners, `ok` |

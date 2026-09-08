@@ -149,6 +149,20 @@ const bandFor = events =>
   Math.max(STREET_BAND_MIN, Math.min(STREET_BAND_MAX, Math.sqrt(events || 400) * 0.46));
 const STREET_GAP   = 1.6;    // kerb to kerb between two avenues
 const STREET_SIGN  = 48;     // characters on a street sign, per the brief
+
+/* ONE STREET NAME, OR NONE  <!-- CITY-SIGNS-DOC -->
+   `index.html?signs=<sid|prefix>` draws that ONE avenue's sign; `?signs=none`
+   draws none. Capture-only, and it exists for the same reason globe.js's
+   `?signs=` does: a film of this city at label size publishes the TITLE of
+   every conversation on the machine — on this one they are Hebrew prompts, and
+   once a Windows path — and a promo shown to clients may not do that. It
+   filters the SIGN LAYER only: the avenues, their buildings and every count
+   the HUD prints are untouched, so the shot is still the real city. Empty (the
+   normal case) changes nothing. Matched as a PREFIX so the eight characters a
+   session is known by are enough. */
+const SIGNS_ONLY = (new URLSearchParams(location.search).get('signs') || '').trim().toLowerCase();
+const wantsSign = sid => !SIGNS_ONLY
+  || (SIGNS_ONLY !== 'none' && String(sid || '').toLowerCase().startsWith(SIGNS_ONLY));
 const LAMP_SPACING = 5.0;    // world units between two lamp posts
 const MAX_LAMPS    = 320;
 
@@ -1609,6 +1623,41 @@ function laserWidth(x, z, minPx) {
    cut so two neighbouring plates cannot bury each other in type. */
 const clipName = (n, max) => { const m = max || 15; return n.length > m ? n.slice(0, m - 1) + '…' : n; };
 
+/* NO MACHINE PATHS IN THE SKY  <!-- CITY-SCRUB-DOC -->
+   A drone tag is the agent's REAL task line — that rule does not change here.
+   What is cut out of it is the part that is not the task: an absolute path, an
+   inline env assignment, or a long URL. A tag once read
+   `Bash · SCRATCH="/c/Users/` — sixty per cent of a Windows temp path and not
+   one character of what ran — and a film of this city publishes whatever is on
+   the sign. Token by token, so the rest of the line survives: a path keeps its
+   LAST segment (the only part a person reads from across a city), an env
+   assignment whose value is a path is dropped whole, and a long URL keeps its
+   last segment too. server.py's task_line() does the same thing one layer up;
+   this is the fallback for the live event path, which never goes through it. */
+const PATHY = /^(?:[a-z]:[\\/]|~[\\/]|%[a-z_]+%|\/(?:[a-z]|users|home|mnt|opt|var|tmp|etc)\/)/i;
+const URLY  = /^[a-z][a-z0-9+.-]*:\/\//i;
+const DRIVE = /^[a-z]:/i;                    // a Windows drive, path or not
+const lastTagSeg = t => t.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || t;
+function scrubTag(text) {
+  const parts = [];
+  for (const raw of String(text || '').split(/\s+/)) {
+    if (!raw) continue;
+    const t = raw.replace(/^["'`]+|["'`,;]+$/g, '');
+    /* The quotes come off the VALUE too: the tag that started this read
+       `SCRATCH="/c/Users/` — the opening quote sits between the `=` and the
+       path, so a test against the raw value never fires. The `$` is
+       PowerShell's (`$root='C:\Users\...'`), and DRIVE catches the value that
+       the tag's own 18-character clip already cut down to `C:` — measured on
+       34,155 real shell tags in this town. */
+    const eq = t.match(/^[$]?([A-Za-z_][A-Za-z0-9_]*)=["'`]?(.*)$/);
+    if (eq && (PATHY.test(eq[2]) || URLY.test(eq[2]) || DRIVE.test(eq[2]))) continue;
+    if (PATHY.test(t)) { parts.push(lastTagSeg(t)); continue; }
+    if (URLY.test(t)) { if (t.length > 24) parts.push(lastTagSeg(t)); else parts.push(t); continue; }
+    parts.push(raw);
+  }
+  return parts.join(' ').trim();
+}
+
 /* A caption's base direction, decided the way the bidi algorithm decides a
    paragraph's: the FIRST strong character wins. Agent tasks are written in
    whatever language Beri typed, and a Hebrew one set left-to-right comes out
@@ -1865,7 +1914,7 @@ function makeDrone(id, label, isMain, tier) {
   /* The craft wears its agent's TASK, not its id: "every drone that is sent
      must carry a tag of what it is going to do". 42 characters is what fits
      on one line at this size without becoming a paragraph in the sky. */
-  const spr = makeLabel(clipName(label, 42), isMain ? '#f2d99a' : '#cfe0ea', 30);
+  const spr = makeLabel(clipName(scrubTag(label), 42), isMain ? '#f2d99a' : '#cfe0ea', 30);
   spr.userData.px = 30;
   spr.scale.multiplyScalar(isMain ? 0.85 : 0.72);
   attachTag(g, spr, isMain ? 0.95 : 0.62, craftScale);
@@ -1977,10 +2026,12 @@ function makeWorker(craft, id, tool, fam, target, detail) {
    person reads from across a city. */
 function workerTagText(tool, target, detail) {
   /* `detail` is what replay.js could say better than the city can: the first
-     word of a shell command. Otherwise the file's own basename is the story. */
-  if (detail) return `${tool} · ${clipName(detail, 18)}`;
-  if (target && target.name) return `${tool} · ${clipName(target.name, 18)}`;
-  return tool;
+     word of a shell command. Otherwise the file's own basename is the story.
+     Scrubbed BEFORE the clip (CITY-SCRUB-DOC): clipping first leaves the head
+     of a path, which is the half that says nothing. A line that was ONLY a
+     path scrubs to nothing, and then the tool's own name is the whole tag. */
+  const d = scrubTag(detail || (target && target.name) || '');
+  return d ? `${tool} · ${clipName(d, 18)}` : tool;
 }
 
 /* Retire a worker: hand back its slot, its tag texture and its ribbon, then
@@ -2744,15 +2795,20 @@ export function openStreet(id, title, live, craftId, events) {
    tag — same first-strong-character rule, same bidi pass. */
 function nameStreet(s, title) {
   if (s.sign) { labelGroup.remove(s.sign); disposeSprite(s.sign); }
-  const spr = makeLabel(clipName(title, STREET_SIGN), '#f2e7cf', 34);
+  /* CITY-SIGNS-DOC: filtered at BUILD time, not hidden — a sprite that is never
+     created costs no texture and cannot come back on a live `street` event,
+     which arrives through this same function. `s.name` is set first, so the
+     title block, the picker and every count stay exactly as they were. */
+  s.name = title;
+  s.titled = true;
+  if (!wantsSign(s.sid)) { s.sign = null; s.dirty = true; return; }
+  const spr = makeLabel(clipName(scrubTag(title), STREET_SIGN), '#f2e7cf', 34);
   spr.userData.px = 34;
   spr.userData.isSign = true;
   spr.userData.street = s;           // the picker walks back from sign to street
   spr.userData.maxPx = 17;      // just above the 13 px floor — see sizeCaption()
   labelGroup.add(spr);
   s.sign = spr;
-  s.name = title;
-  s.titled = true;
   s.dirty = true;
 }
 
@@ -2795,7 +2851,7 @@ function syncStreets() {
        for the wide shot: the outermost avenues already sit against the edge of
        the frame, and a sign hung a metre further out is the one that reads back
        as "usikschule" (HANDOFF open item 6). */
-    s.sign.position.set(x + 0.6, 1.15, z + STREET_ROAD * 0.5);
+    if (s.sign) s.sign.position.set(x + 0.6, 1.15, z + STREET_ROAD * 0.5);
     lampsDirty = true;
   }
   for (const s of streetOrder) {
@@ -5612,8 +5668,13 @@ export function tagPixels() {
     if (px < min) min = px;
     sN++; n++;
   }
+  /* `signs` is what is IN FRAME this instant, which is a framing number and
+     swings with the camera. `signsBuilt` is how many sprites exist at all —
+     the only number that can gate `?signs=` (CITY-SIGNS-DOC), because a
+     filtered sign is never created rather than hidden. */
   return { captions: n, minGlyphPx: n ? +min.toFixed(1) : null,
-           signs: sN, minSignPx: sN ? +sMin.toFixed(1) : null };
+           signs: sN, minSignPx: sN ? +sMin.toFixed(1) : null,
+           signsBuilt: streetOrder.reduce((k, s) => k + (s.sign ? 1 : 0), 0) };
 }
 
 /* What is actually in the air, by AIRFRAME. `kit.stats()` counts craft and the

@@ -340,6 +340,15 @@ quicker to rewrite than to maintain. It also subscribes to `Runtime.enable` and
 `Log.enable` and prints the console-error count, which is how the "zero errors"
 claim is made.
 
+**Street signs, capture-only:** `index.html?signs=<sid|prefix|none>` draws one
+avenue's street sign or none at all — the same flag `globe.html?signs=<name>`
+already has one layer up (see the Globe section below), for a film shot that
+must not publish every conversation title on the machine. Filtered at build
+time; `window.__tags().signsBuilt` is the count to check, not `.signs` (which
+is only what is in frame). In this fork's single-session mode the one avenue's
+`sid` is the literal string `solo` — `?signs=solo` is the equivalent of the
+private install's `?signs=<8-char session prefix>`.
+
 Two of the reference shots cannot be taken on a stopwatch: a print lasts 1.2 s
 and a derez under half of one, and neither happens at a time you can predict. The
 harness therefore takes an optional **until-expression**: after the wall-clock
