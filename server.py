@@ -1408,7 +1408,7 @@ PROJECT_MARKER_NAMES = ("docs", ".git", "package.json", "index.html")
 # Demos are their own towns: a path segment named one of these that is
 # immediately followed by a directory carrying its own project markers is
 # that project's root, checked BEFORE the DESKTOP_PROJECTS_RE fallback below
-# -- otherwise "wild-digital-moments-site/demos/musikschule" collapses into
+# -- otherwise "a-site/demos/inner-demo" collapses into
 # the parent site town and the flagship "music site must look like a music
 # school" demo never gets its own trade-shaped building.
 DEMO_CONTAINER_NAMES = {"demos", "demo", "sites", "clients", "apps", "tools", "video"}
@@ -3068,8 +3068,8 @@ _REFERENCE_SENTENCE_RE = re.compile(
 
 def _strip_paths_and_code(text):
     """Drop code spans, wikilinks and URL/path-shaped tokens before a
-    keyword source is matched -- a hit inside `/musikschule/`,
-    `musikschule.html` or a `[[wikilink]]` names a location, not the
+    keyword source is matched -- a hit inside `/some-project/`,
+    `some-project.html` or a `[[wikilink]]` names a location, not the
     project's own trade."""
     if not text:
         return text
@@ -3086,8 +3086,8 @@ def _strip_reference_sentences(text):
     """Drop whole lines that talk ABOUT another project -- 'demo',
     'reference', 'example', 'installed on', 'for the' -- before a BRIEF/
     README source is matched. site-editor's own BRIEF and README each name
-    the musikschule demo as the reference install ("On the Musikschule
-    demo, live at ..."); that is prose about musikschule, not about
+    another demo as the reference install ("On the reference
+    demo, live at ..."); that is prose about that demo, not about
     site-editor, and must not decide site-editor's trade."""
     if not text:
         return text
@@ -3215,7 +3215,7 @@ def _structural_default_trade(root):
     keyword table -- a project under a `tools` category folder, or one with
     server.py/package.json `bin`/`main` whose only html pages are
     admin/editor UIs, is code regardless of what its own docs happen to say
-    about another project (site-editor's BRIEF/README name the musikschule
+    about another project (site-editor's BRIEF/README name another
     demo as its reference install; that must not make site-editor read as
     `MusicSchool`)."""
     if _is_tool_project(root):
@@ -3430,7 +3430,7 @@ _meta_cache_lock = threading.Lock()
 # H4 (docs/TESTS.md, "Acceptance 2026-09-07 evening"): /api/world used to
 # recompute trade+logo for every town on every payload rebuild, budgeted to
 # WORLD_META_BUDGET_SECS total (not per town) and ordered by tool_calls --
-# so a low-activity town (gasthof-post-wenns, 4 calls) sat at the tail of
+# so a low-activity town (4 calls) sat at the tail of
 # that loop and lost the budget on EVERY rebuild, forever, while which towns
 # elsewhere made the cut depended on machine load at that instant (the
 # 1-45 swing HANDOFF documents). Fix: trade+logo now live in one persistent,

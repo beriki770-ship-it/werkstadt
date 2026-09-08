@@ -2103,7 +2103,7 @@ export async function enterHall(spec) {
      30 mm on a 16:9 frame — 23 degrees off the axis, either side — so a board
      bolted to a wall 10 m to the left of a reader standing 2 m inside the door
      is not "at the edge of the frame", it is off it entirely, and the one
-     capture that caught it at all (docs/shots/final/world-int-musikschule.png)
+     capture that caught it at all (a MusicSchool-trade town's interior shot)
      caught it cut in half. Suspended over the left-hand aisle two thirds of the
      way down, turned to face the door, it sits 15 degrees off the axis with its
      whole width inside the frame from the moment the reader walks in — and it

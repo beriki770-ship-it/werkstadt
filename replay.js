@@ -50,7 +50,7 @@ let cwd = '';
    answer for the town's real root, not a guess from the events it happened to
    see. When it is there, use it outright and skip the 40% heuristic below: the
    heuristic exists only because nothing better than the events was available,
-   and musikschule (36.3% under its cwd) is exactly the town it gets wrong. An
+   and a real town (36.3% under its cwd) is exactly the kind it gets wrong. An
    older server with no `root` field falls straight through to the heuristic,
    unchanged. */
 function chooseRoot(rep) {

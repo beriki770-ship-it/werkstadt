@@ -4472,7 +4472,7 @@ const LM_APRON = 3.0;
     landmarkGeo() are not unit boxes — they are modelled at whatever size their
     parts need, and claude-live's came back 23.2 m wide off a `size` of 12,
     which is 1.93 units. A scan is worse: landmarkScan() fits it by HEIGHT and
-    leaves its width wherever the generator put it (musikschule: 15.1 x 17.0 m
+    leaves its width wherever the generator put it (a MusicSchool-trade town: 15.1 x 17.0 m
     at a 9.5 m target). Both are read here rather than guessed at.
 
     The procedural geometry is cached on the settlement because buildLandmarks()
@@ -4644,7 +4644,7 @@ function buildLandmarks() {
     const form = type && TRADE_FORMS[type];
     if (!form) continue;
     /* A settlement WITH a detected trade always gets its trade landmark now —
-       Beri wants gasthof-im-tal (hamlet) and gasthof-post-wenns (fields) to
+       Beri wants two Hotel-trade settlements (one hamlet, one fields) to
        show their Hotel. Scaled to 0.7x the town size for hamlet/fields (still
        facing the road and carrying the logo sign, both unchanged below);
        settlements with no trade never reach this line (see !form above).
@@ -5016,7 +5016,7 @@ const _sv = new THREE.Vector3();
     already placed. Three separate culls and all three are needed: the pixel
     solve is what makes a name legible from orbit AND from a street, the horizon
     is what three does not know about a sphere, and the overlap is why the first
-    capture read "takt-robotik" and "musikschule" as one word. */
+    capture read two adjacent towns' name-plaques as one word. */
 function updateSigns() {
   const H = window.innerHeight, W = window.innerWidth;
   const fovRad = camera.fov * DEG;
