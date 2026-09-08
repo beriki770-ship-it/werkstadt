@@ -838,3 +838,6 @@ arrived 12.00 s, cleared 34.01 s.
 **Cost.** The fixture is 5.4 KB rather than 2.5 KB, and the demo takes about
 half a minute to reach its accident. Both are cheaper than a demo whose most
 interesting feature never fires.
+
+## 2026-09-08 — why "Werkstadt" and not the research shortlist
+The research shortlist (Ludus / Agentopolis / Vantage) was checked before adoption: **Agentopolis** was already taken by two GitHub repos with the same concept (Claude Code agents as a city), and by the npm and PyPI package names. Werkstadt (German: Werk + Stadt, echoing Werkstatt) was free on npm and PyPI and had only unrelated 0-star GitHub hits; it also carries the studio's Tyrolean signature. Decided by the owner on 2026-09-08 after seeing the availability table.
