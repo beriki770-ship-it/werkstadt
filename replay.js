@@ -1149,6 +1149,10 @@ window.__tags = () => City.tagPixels();
    the instrument behind the framing row in RUNBOOK.md — a pixel measurement off
    a screenshot cannot tell a lit window from a drone or a star, and this can. */
 window.__frame = () => City.frameBox();
+/* Every plate label actually standing, for the CITY-DIRNAME-DOC verification
+   pass: a run against a real town greps this for a machine path instead of
+   trusting the fix by inspection. */
+window.__plateLabels = () => City.plateLabels();
 /* The two silent breakages, in one call: { attrs, sphereRadius, streets,
    buildings }. attrs must be 16 (17 stops the facade program linking and the
    city goes black); sphereRadius must be positive (a cached -1 makes every

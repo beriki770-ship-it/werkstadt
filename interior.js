@@ -404,6 +404,36 @@ function sourcePanel(rows, first, warm, hot) {
   return mesh;
 }
 
+/* NO MANGLED DIRECTORY NAMES ON A ROOM WALL  <!-- CITY-DIRNAME-DOC -->
+   The same check city.js applies to a plate before it ever reaches the
+   ground (see its CITY-DIRNAME-DOC): a `~/.claude/projects` folder name has
+   every separator flattened to a dash, and a real tool call against a file
+   living there put one on a wall in here as the file's own address. Plate and
+   street names arrive already clean (their labels are set once, in
+   city.js — see plateLabels()); a file's `rel` is not, since this module
+   reads it straight off the building record for the address line and the
+   floor HUD. Duplicated rather than imported: city.js already imports this
+   module, so the other direction is a cycle, and the rule is ten lines. */
+function looksMangledDir(s) {
+  if (/^[a-z]--users-|--users-|-appdata-/i.test(s)) return true;
+  return s.length > 40 && (s.split('-').length - 1) >= 3;
+}
+function scrubDirName(name) {
+  const s = String(name || '');
+  if (!looksMangledDir(s)) return s;
+  const parts = s.split('-').filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const t = parts[i];
+    if (t.length >= 3 && /[a-z]/i.test(t) && !/^[0-9a-f]{6,}$/i.test(t)) return t;
+  }
+  return '~';
+}
+function scrubRelDisplay(rel) {
+  const segs = String(rel || '').split('/');
+  const file = segs.pop();
+  return segs.map(scrubDirName).concat(file).join('/');
+}
+
 /* A plaque: a small piece of prose on a dark plate. Used for the "source not
    available" notice, the file's own address, a prompt in the hall of records
    and a door's label in a lobby. */
@@ -881,7 +911,7 @@ function syncDesks(live) {
   if (!dress || !dress.desks) return;
   /* What an idle terminal shows: the room's own file, which is the one fact a
      desk in THIS room can state without inventing anybody to be sitting at it. */
-  const idleText = (subject && (subject.rel || subject.name)) || '';
+  const idleText = (subject && (subject.rel ? scrubRelDisplay(subject.rel) : subject.name)) || '';
   dress.desks.forEach((d, i) => {
     const w = live[i];
     d.glow.visible = !!w;
@@ -1075,7 +1105,7 @@ export async function enterBuilding(b) {
     : source.fixture
       ? 'FIXTURE — data/sample-file.txt. The real source needs GET /api/project/file'
       : `${source.lines.length} lines · GET /api/project/file`;
-  const addr = plaque(b.name, `${b.rel}\n${floors} floor${floors === 1 ? '' : 's'} · ` +
+  const addr = plaque(b.name, `${scrubRelDisplay(b.rel)}\n${floors} floor${floors === 1 ? '' : 's'} · ` +
                               `${floors} Edit/Write event${floors === 1 ? '' : 's'}\n${originLine}`,
                       { w: 4.2, gold: true });
   addr.position.set(-ROOM_W / 2 + 0.06, 1.9, -ROOM_D * 0.18);
@@ -1147,7 +1177,7 @@ export async function enterBuilding(b) {
   syncDesks(host.workersFor(b));
   syncLiftNumbers(0);
   mountFloor(0);
-  setHud(`${b.rel} — floor 1 of ${floors}`);
+  setHud(`${scrubRelDisplay(b.rel)} — floor 1 of ${floors}`);
 }
 
 /* A PLATE — a directory. Its lobby lists the files that stand on it as doors,
@@ -1316,7 +1346,7 @@ function makeWallPanel(f, wall) {
   if (s.missing) {
     if (wall !== 0) return null;
     const m = plaque('source not available',
-                     `${subject.rel}\nGET /api/project/file did not answer for this path. ` +
+                     `${scrubRelDisplay(subject.rel)}\nGET /api/project/file did not answer for this path. ` +
                      `The building's floors, plaques and drones are still this file's own events.`,
                      { w: 6.0 });
     place(m, f, wall, 2.0);
@@ -3350,7 +3380,7 @@ function stepPlayer(dt) {
     player.floor = floor;
     mountFloor(floor);
     syncLiftNumbers(floor);
-    if (mode === 'file') setHud(`${subject.rel} — floor ${floor + 1} of ${dress.floors}`);
+    if (mode === 'file') setHud(`${scrubRelDisplay(subject.rel)} — floor ${floor + 1} of ${dress.floors}`);
   }
 }
 
@@ -3707,6 +3737,6 @@ export function stand(x, y, z, yaw, pitch) {
   /* stepPlayer() sets this HUD line whenever a real step crosses a floor —
      __stand() teleports past that check entirely, so a shot taken right after
      it kept reading "floor 1 of N" no matter where it landed. */
-  if (mode === 'file' && subject) setHud(`${subject.rel} — floor ${player.floor + 1} of ${dress.floors}`);
+  if (mode === 'file' && subject) setHud(`${scrubRelDisplay(subject.rel)} — floor ${player.floor + 1} of ${dress.floors}`);
   return true;
 }

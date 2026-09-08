@@ -1658,6 +1658,46 @@ function scrubTag(text) {
   return parts.join(' ').trim();
 }
 
+/* NO MANGLED DIRECTORY NAMES ON A PLATE  <!-- CITY-DIRNAME-DOC -->
+   scrubTag above catches a path that still has its slashes. This catches one
+   that has already lost them: `~/.claude/projects` stores one folder per
+   session's own cwd with every separator flattened to a dash
+   (`C--Users-berik-Desktop----------CLAUDE`), and a Windows save-dialog names
+   a Downloads folder the same way on its own terms. relativise() (replay.js)
+   already keeps only the last three segments of a path outside the project
+   root, but it has no way to know one of those segments IS a flattened path
+   rather than a real folder — that is what turned a REAL tool call against
+   such a file into a ground plate labelled with a chunk of somebody's home
+   directory. Two shapes: the `~/.claude/projects` convention itself
+   (`--Users-`, `-AppData-`), or anything else long and dashed enough to be the
+   same kind of thing (measured: a real Downloads save-dialog name). Reduced to
+   the last dash-split token that still reads as a word — a hex/uuid run or a
+   bare number is a generated id, not a name a person would read off a sign —
+   or to `~` when nothing in it qualifies. */
+const MANGLED_DIR = /^[a-z]--users-|--users-|-appdata-/i;
+function looksMangledDir(s) {
+  if (MANGLED_DIR.test(s)) return true;
+  return s.length > 40 && (s.split('-').length - 1) >= 3;
+}
+function scrubDirName(name) {
+  const s = String(name || '');
+  if (!looksMangledDir(s)) return s;
+  const parts = s.split('-').filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const t = parts[i];
+    if (t.length >= 3 && /[a-z]/i.test(t) && !/^[0-9a-f]{6,}$/i.test(t)) return t;
+  }
+  return '~';
+}
+/* The same check applied to every directory segment of a shown path, the
+   filename left alone — a hover caption's job is to say what file this is,
+   and the file's own name is never the part that leaked. */
+function scrubRelDisplay(rel) {
+  const segs = String(rel || '').split('/');
+  const file = segs.pop();
+  return segs.map(scrubDirName).concat(file).join('/');
+}
+
 /* A caption's base direction, decided the way the bidi algorithm decides a
    paragraph's: the FIRST strong character wins. Agent tasks are written in
    whatever language Beri typed, and a Hebrew one set left-to-right comes out
@@ -2617,7 +2657,7 @@ function annexOf(plate) {
 }
 
 function newPlate(key, name, parent, depth, named) {
-  const p = makePlate(key, name, null, depth);
+  const p = makePlate(key, scrubDirName(name), null, depth);
   p.w = PLATE_PAD * 2; p.h = PLATE_PAD * 2;
   let host = parent;
   while (!addChild(host, p, PLATE_GAP)) {
@@ -4737,7 +4777,7 @@ function setHover(hit, x, y) {
 }
 
 function captionFor(h) {
-  if (h.kind === 'file')  return h.rec.rel + '  ·  ' + h.rec.floors + ' floors';
+  if (h.kind === 'file')  return scrubRelDisplay(h.rec.rel) + '  ·  ' + h.rec.floors + ' floors';
   if (h.kind === 'plate') return h.rec.name + '/  ·  district';
   return h.rec.name + '  ·  session';
 }
@@ -5688,6 +5728,14 @@ export function kitStats() {
   for (const d of drones.values()) bump(d.group);
   for (const w of workers.values()) bump(w.group);
   return Object.assign({ kit: true, byVariant }, kit.stats());
+}
+
+/* The harness probe CITY-DIRNAME-DOC's verification needs and none of the
+   existing hooks give it: every plate that actually carries a label sprite —
+   an unlabelled outer plate (see newPlate's `named` flag) has nothing on the
+   ground for a film to publish, so it is not in this list. */
+export function plateLabels() {
+  return allPlates.filter(p => p.labelSprite).map(p => p.name);
 }
 
 export function frameBox() {
