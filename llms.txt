@@ -1,0 +1,30 @@
+# Werkstadt
+
+> Werkstadt is a Claude Code visualizer: a local, open-source (Apache-2.0) tool that reads the session transcripts Claude Code already writes to `~/.claude/projects/**/*.jsonl` and renders them as a 3D world you can fly through — a planet of every project, an island per project, and one coding session as a walkable city where each street is a session and each building is a file. It runs entirely on the user's own machine (Python standard library server bound to 127.0.0.1), with no account, no telemetry, and an optional pseudonymization mode for screenshots and recordings.
+
+This file follows the llms.txt convention (https://llmstxt.org/) so language models and AI agents can find the right page for a given question without crawling the whole repository.
+
+## Docs
+
+- [README](README.md): what it is, the three views, screenshots, configuration reference
+- [How it works](docs/HOW-IT-WORKS.md): the server, the event schema, every `/api/*` endpoint
+- [Release notes](docs/RELEASE-NOTES.md): what shipped in 0.1.0 and its known limits
+- [Runbook](docs/RUNBOOK.md): running it at login on Windows, macOS and Linux
+
+## Install
+
+- [30-second install](README.md#install-in-30-seconds): `git clone`, fetch the asset library, `python server.py` — Python 3.9+, no `pip install`, no build step
+- [Claude Code plugin](README.md#as-a-claude-code-plugin): `/plugin marketplace add beriki770-ship-it/werkstadt`
+- [Latest release](https://github.com/beriki770-ship-it/werkstadt/releases/latest): source archive and the CC0 asset zip
+
+## Privacy
+
+- [Privacy section](README.md#privacy): binds to 127.0.0.1 only, reads transcripts read-only, no upload, no account, no telemetry
+- Redaction mode (`--redact` or `"redact": true`) replaces every project name, session title, file path and agent tag with a stable pseudonym before it leaves the server
+
+## Source
+
+- [Repository](https://github.com/beriki770-ship-it/werkstadt)
+- [License](LICENSE): Apache-2.0
+- [Citation](CITATION.cff)
+- Built by [Wild Digital Moments](https://digital.wildmoments.at/), a web studio in Tirol, Austria

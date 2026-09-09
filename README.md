@@ -1,5 +1,7 @@
 # Werkstadt
 
+**English · [Deutsch](docs/i18n/README.de.md) · [עברית](docs/i18n/README.he.md) · [Français](docs/i18n/README.fr.md) · [Español](docs/i18n/README.es.md) · [Português](docs/i18n/README.pt-BR.md) · [Italiano](docs/i18n/README.it.md) · [Русский](docs/i18n/README.ru.md) · [中文](docs/i18n/README.zh-CN.md) · [日本語](docs/i18n/README.ja.md) · [한국어](docs/i18n/README.ko.md) · [हिन्दी](docs/i18n/README.hi.md) · [العربية](docs/i18n/README.ar.md)**
+
 A live 3D world for your Claude Code sessions.
 
 ![License Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)
@@ -7,6 +9,10 @@ A live 3D world for your Claude Code sessions.
 ![Runs locally](https://img.shields.io/badge/runs-locally-lightgrey)
 
 **[♥ Sponsor Werkstadt](https://digital.wildmoments.at/werkstadt/#sponsor)** — it is built and maintained by one studio, and sponsorship is what pays for the next phase.
+
+## What people call this
+
+Werkstadt is a Claude Code visualizer: it turns your coding-agent session logs into a 3D city you can walk through. People searching for this kind of tool also call it a session replay viewer, an AI agent visualization, a developer wallpaper, or a way to watch coding agents at work in real time. It draws a live view of Claude Code — a 3D map of the projects on your disk, a tool-call timeline rendered as streets and buildings, and a screensaver or wallpaper mode for showing that work passively on an idle screen. Everything runs locally: no account, no telemetry, no server but your own.
 
 ## What it is
 

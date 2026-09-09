@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: Werkstadt
+abstract: >-
+  A live 3D world for your Claude Code sessions. Reads the session
+  transcripts Claude Code already writes to ~/.claude/projects/**/*.jsonl
+  and renders them as a planet, an island, and a walkable city, entirely
+  on the user's own machine.
+type: software
+version: 0.1.0
+date-released: "2026-09-08"
+license: Apache-2.0
+repository-code: "https://github.com/beriki770-ship-it/werkstadt"
+url: "https://digital.wildmoments.at/werkstadt/"
+authors:
+  - name: "Wild Digital Moments"
+    website: "https://digital.wildmoments.at/"
+  - family-names: Kirsh
+    given-names: "Shalom Dov Ber"
