@@ -3,7 +3,7 @@
   Design & Code: Wild Digital Moments
   Studio: https://digital.wildmoments.at/
   Contact: studio.beri [at] wildmoments.at
-  Location: Wenns, Tirol, Austria
+  Location: Imst, Tirol, Austria
 
 /* SITE */
 
