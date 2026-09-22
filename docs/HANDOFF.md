@@ -13,6 +13,9 @@ Python server serves the pages and two SSE feeds, so the world updates while you
 work.
 
 This is the **public fork**. It was cut out of a private single-machine install
+
+## Address move (2026-09-22)
+Beri's studio address changed to Streleweg 18a/Top 20, 6460 Imst (was Unterdorf 22/5, 6473 Wenns; source: Meldebestätigung 22.09.2026). In this repo: humans.txt Location line → Imst. Not deployed (not public from this repo). Brief with the canonical strings: `Desktop/projects/wdm/address-move-2026-09/BRIEF.md`. Committed locally, not pushed.
 called Claude Live and is being released under the name Werkstadt. Everything
 below describes this tree, not the one it came from.
 
